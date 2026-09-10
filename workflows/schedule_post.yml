@@ -1,0 +1,72 @@
+name: Hourly GenAI Architectural Publisher
+
+on:
+  schedule:
+    # Runs every hour at minute 0 (Hourly Frequency)
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      custom_topic:
+        description: 'Suggest custom GenAI topic (e.g. Diffusion Models, Reasoning Models, FlashAttention)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  publish_and_deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Execute Automated GenAI Post Generator
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CUSTOM_TOPIC: ${{ github.event.inputs.custom_topic }}
+        run: |
+          if [ -n "$CUSTOM_TOPIC" ]; then
+            echo "🚀 Generating custom suggested topic: $CUSTOM_TOPIC"
+            python scripts/generate_post.py --custom-topic "$CUSTOM_TOPIC"
+          else
+            echo "📅 Generating next scheduled GenAI topic from queue"
+            python scripts/generate_post.py
+          fi
+
+      - name: Commit and Push Updated Knowledge Base
+        run: |
+          git config --global user.name "GenAI Architecture Bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git add data/
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-publish: New hourly GenAI dispatch [skip ci]"
+          git push
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

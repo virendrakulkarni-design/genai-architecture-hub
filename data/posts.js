@@ -1,0 +1,173 @@
+// Auto-generated data sync for direct local file:// and offline execution
+window.POSTS_DATA = [
+  {
+    "id": "post-1",
+    "level": "LEVEL 1: FOUNDATIONAL ARCHITECTURE",
+    "levelClass": "level-1",
+    "readTime": "7 min read",
+    "audience": "All Software Engineers & Architects",
+    "title": "The Transformer Deconstructed: How Self-Attention Actually Works Under the Hood",
+    "lead": "Every modern LLM from GPT-4o to Claude and DeepSeek is built on the Transformer architecture. But behind the jargon of Queries, Keys, and Values lies an elegant, intuitive matrix lookup mechanism.",
+    "stats": {
+      "type": "info",
+      "title": "The Scaling Law Revolution:",
+      "items": [
+        "Before Transformers (2017), RNNs and LSTMs were strictly sequential (O(N) time dependency), making training across massive clusters mathematically impossible.",
+        "The Transformer's parallel matrix multiplication allowed training compute to scale from <strong>thousands of FLOPs to over 10²⁵ FLOPs</strong> without vanishing gradients."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Filing Cabinet & The Search Query",
+      "text": "Imagine a library with millions of file folders:<br>• <strong>Query (Q):</strong> What you are searching for right now (the prompt token).<br>• <strong>Key (K):</strong> The label on the folder tab (what every other token is about).<br>• <strong>Value (V):</strong> The actual content inside the folder.<br><br><strong>Self-Attention calculates a dot product between Q and K:</strong> It measures how relevant every token is to every other token, generating a weighted average of Values. That's it—no magic, just weighted attention across a semantic coordinate space."
+    },
+    "diagram": "graph LR\n    subgraph Inputs [\"Input Embeddings\"]\n        T[\"Token: 'Bank'\"] --> Q[\"Query Matrix (Q)\"]\n        T --> K[\"Key Matrix (K)\"]\n        T --> V[\"Value Matrix (V)\"]\n    end\n    subgraph Attention [\"Scaled Dot-Product Attention\"]\n        Q & K --> MatMul[\"Q · K^T / sqrt(d_k)\"]\n        MatMul --> Softmax[\"Softmax (Attention Weights)\"]\n        Softmax & V --> Output[\"Contextual Representation\"]\n    end\n    style Output fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Softmax fill:#065f46,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure 1: Scaled Dot-Product Attention Mechanism",
+    "codeTitle": "self_attention_numpy.py",
+    "codeContent": "import numpy as np\n\ndef scaled_dot_product_attention(Q, K, V, mask=None):\n    d_k = Q.shape[-1]\n    scores = np.matmul(Q, K.T) / np.sqrt(d_k)\n    if mask is not None:\n        scores += (mask * -1e9)\n    attention_weights = np.exp(scores) / np.sum(np.exp(scores), axis=-1, keepdims=True)\n    return np.matmul(attention_weights, V), attention_weights\n\n# Q, K, V dimensions: [seq_len, d_k]\noutput, weights = scaled_dot_product_attention(Q_matrix, K_matrix, V_matrix)",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "Attention is a soft, differentiable hash-table lookup across tokens.",
+        "Quadratic O(N²) memory complexity in naive attention is why KV-caching and FlashAttention are mandatory in production.",
+        "Tokens gain meaning purely from their context: 'Apple' the fruit vs 'Apple' the stock ticker get distinct vectors after layer 1."
+      ],
+      "badge": "Every multi-billion parameter model is just stacked blocks of Attention + Feed-Forward layers."
+    }
+  },
+  {
+    "id": "post-2",
+    "level": "LEVEL 2: COMPUTE EFFICIENCY",
+    "levelClass": "level-2",
+    "readTime": "8 min read",
+    "audience": "Senior Backend & ML Infrastructure Engineers",
+    "title": "Mixture of Experts (MoE): How to Run a 671B Model on the Budget of a 37B Model",
+    "lead": "Dense models like LLaMA-3 70B activate every single parameter for every single token. Mixture of Experts (MoE) introduces sparse routing, unlocking GPT-4 tier intelligence at 1/10th the inference cost.",
+    "stats": {
+      "type": "success",
+      "title": "The Economic Shift to Sparse Architectures:",
+      "items": [
+        "<strong>DeepSeek-V3 / Mixtral:</strong> DeepSeek-V3 has <strong>671 Billion total parameters</strong>, but activates only <strong>37 Billion parameters per token</strong>.",
+        "MoE models reduce active FLOPs per generated token by up to <strong>75%</strong> while maintaining the parametric capacity of a giant model."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Hospital Emergency Room Triage",
+      "text": "When a patient enters a hospital, you don't assign all 100 specialist doctors to examine their sprained ankle. A triage nurse inspects the symptom and routes the patient to 2 relevant specialists (e.g. Orthopedics and Radiology).<br><br><strong>MoE is algorithmic triage:</strong> A router network inspects each token and activates only the top-2 most relevant expert feed-forward networks (out of 8, 64, or 256 experts)."
+    },
+    "diagram": "graph TD\n    Token[\"Input Token Vector\"] --> Router[\"Softmax Gating Router\"]\n    Router -->|Score: 0.72| Exp1[\"Expert 2: Code &amp; Logic\"]\n    Router -->|Score: 0.24| Exp2[\"Expert 7: Math &amp; Quant\"]\n    Router -.->|Score: 0.02 (Inactive)| Exp3[\"Expert 1: Creative Writing\"]\n    Router -.->|Score: 0.01 (Inactive)| Exp4[\"Expert 3: Translation\"]\n    Exp1 & Exp2 --> Aggregator[\"Weighted Weighted Output\"]\n    style Exp1 fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Exp2 fill:#065f46,stroke:#34d399,color:#fff\n    style Exp3 fill:#334155,stroke:#64748b,color:#94a3b8\n    style Exp4 fill:#334155,stroke:#64748b,color:#94a3b8",
+    "diagramCaption": "Figure 2: Sparse Top-K Routing in Mixture of Experts (MoE)",
+    "codeTitle": "sparse_moe_routing.py",
+    "codeContent": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass TopKRouter(nn.Module):\n    def __init__(self, d_model, num_experts, top_k=2):\n        super().__init__()\n        self.gate = nn.Linear(d_model, num_experts, bias=False)\n        self.top_k = top_k\n\n    def forward(self, x):\n        logits = self.gate(x) # [batch, seq_len, num_experts]\n        weights, indices = torch.topk(F.softmax(logits, dim=-1), self.top_k, dim=-1)\n        # Normalize top-k weights to sum to 1.0\n        weights = weights / weights.sum(dim=-1, keepdim=True)\n        return weights, indices",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "MoE decouples total knowledge capacity (parameter count) from active computation cost (FLOPs).",
+        "The primary bottleneck shifts from GPU compute to GPU memory bandwidth (RAM capacity to hold all expert weights).",
+        "Load balancing loss is critical during training to prevent router collapse (all tokens routing to expert #1)."
+      ],
+      "badge": "MoE is why open frontier models now rival proprietary giants at a fraction of the cost."
+    }
+  },
+  {
+    "id": "post-3",
+    "level": "LEVEL 3: HARDWARE ACCELERATION",
+    "levelClass": "level-3",
+    "readTime": "8 min read",
+    "audience": "MLOps, Infrastructure & Platform Architects",
+    "title": "Quantization Deep-Dive: Running 70B Models on a Single GPU with AWQ & GGUF",
+    "lead": "A 70-Billion parameter model in FP16 precision requires 140GB of VRAM—demanding an expensive dual-A100 server. Quantization compresses weights into INT4/FP8, fitting the exact same model into a single 40GB GPU with under 1% perplexity loss.",
+    "stats": {
+      "type": "warning",
+      "title": "The Memory Footprint Reality:",
+      "items": [
+        "Standard FP16 = <strong>2 bytes per parameter</strong>. A 70B model = 140GB VRAM strictly for weights (excluding KV cache!).",
+        "AWQ / INT4 quantization = <strong>0.5 bytes per parameter</strong>. That same 70B model shrinks to <strong>~36GB VRAM</strong>, running comfortably on a single RTX 6000 or A100."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: High-Resolution FLAC Audio vs. MP3",
+      "text": "A studio FLAC audio file captures 24-bit 192kHz audio. But human ears can't perceive 99% of that ultrasonic data. Compressing to a 320kbps MP3 cuts file size by 85% with zero perceivable audio degradation.<br><br><strong>Quantization is MP3 compression for neural network weights:</strong> Most weights don't need 16 bits of floating-point precision; mapping them into 4-bit integers preserves model intelligence while cutting memory bandwidth by 4x."
+    },
+    "diagram": "graph LR\n    subgraph FP16 [\"FP16 Precision (16-bit Float)\"]\n        F[\"Weight: 0.142583921...<br/>(16 bits per weight)\"]\n    end\n    subgraph INT4 [\"INT4 Quantization (4-bit Integer)\"]\n        Q[\"Quantized Bucket: 3<br/>(4 bits per weight)\"]\n    end\n    FP16 -->|Activation-aware scaling| INT4\n    INT4 --> Speed[\"4x Less Memory Bandwidth<br/>3.5x Higher Token Throughput\"]\n    style INT4 fill:#065f46,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure 3: Floating Point 16-bit to 4-bit Integer Weight Quantization",
+    "codeTitle": "vllm_awq_deployment.sh",
+    "codeContent": "# Deploying an AWQ Quantized 70B model using vLLM for production throughput\npython -m vllm.entrypoints.openai.api_server \\\n    --model Tech-Org/Llama-3-70B-Instruct-AWQ \\\n    --quantization awq \\\n    --dtype auto \\\n    --gpu-memory-utilization 0.95 \\\n    --max-model-len 8192 \\\n    --port 8000",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "LLM inference is memory-bandwidth bound, not compute bound. Quantization speeds up generation directly by moving 4x fewer bytes across the GPU bus.",
+        "Use AWQ (Activation-aware Weight Quantization) for server GPUs and vLLM.",
+        "Use GGUF / llama.cpp for edge devices, Apple Silicon (Metal), and local desktop deployment."
+      ],
+      "badge": "Quantization slashes GPU infrastructure costs by 75% with statistically zero accuracy loss."
+    }
+  },
+  {
+    "id": "post-4",
+    "level": "LEVEL 4: ADAPTATION & POST-TRAINING",
+    "levelClass": "level-4",
+    "readTime": "9 min read",
+    "audience": "AI Engineers & Staff Machine Learning Architects",
+    "title": "Fine-Tuning Paradigms: Full Fine-Tuning vs. LoRA vs. QLoRA",
+    "lead": "Should you train every parameter in your foundation model, or freeze the base model and inject low-rank decomposition matrices? Here is the architectural calculus behind parameter-efficient fine-tuning (PEFT).",
+    "stats": {
+      "type": "danger",
+      "title": "The GPU Memory Scaling Trap:",
+      "items": [
+        "Full fine-tuning requires holding the model weights, optimizer states (AdamW takes 8 bytes per param!), and gradients in GPU RAM = <strong>16–20 bytes per parameter</strong> (~1.4 Terabytes of VRAM for 70B!).",
+        "LoRA (Low-Rank Adaptation) freezes base weights and trains < <strong>0.5% of total parameters</strong>, reducing training VRAM by 80% with zero catastrophic forgetting."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Transparent Sticky Notes on a Textbook",
+      "text": "If you buy an expensive $500 biology textbook, you don't take a sharpie and rewrite every single sentence to add your study notes. You place transparent sticky notes on top of key pages.<br><br><strong>LoRA is a transparent sticky note layer:</strong> The base model weights W are frozen ($W_0$). We train two tiny low-rank adapter matrices $A$ and $B$ where $\\Delta W = B \\times A$. During inference, we just add the notes to the base model."
+    },
+    "diagram": "graph LR\n    subgraph Frozen [\"Frozen Base Model (16-bit)\"]\n        W0[\"W_0: 4096 x 4096 Matrix<br/>(16,777,216 parameters - FROZEN)\"]\n    end\n    subgraph LoRA [\"LoRA Low-Rank Adapter (Rank r=16)\"]\n        A[\"Matrix A: 4096 x 16<br/>(65,536 params)\"]\n        B[\"Matrix B: 16 x 4096<br/>(65,536 params)\"]\n        A --> B\n    end\n    Input[\"Token Input x\"] --> W0\n    Input --> A\n    W0 & B --> Sum[\"Output = W_0(x) + (B·A)(x)·(alpha/r)\"]\n    style W0 fill:#334155,stroke:#64748b,color:#94a3b8\n    style B fill:#1e3a8a,stroke:#60a5fa,color:#fff",
+    "diagramCaption": "Figure 4: Low-Rank Adaptation (LoRA) Architecture Matrix Decomposition",
+    "codeTitle": "peft_lora_config.py",
+    "codeContent": "from peft import LoraConfig, get_peft_model, TaskType\n\nlora_config = LoraConfig(\n    task_type=TaskType.CAUSAL_LM,\n    r=16,               # Rank dimension (typically 8, 16, or 32)\n    lora_alpha=32,      # Scaling factor (usually 2x rank)\n    target_modules=[\"q_proj\", \"v_proj\", \"k_proj\", \"o_proj\"],\n    lora_dropout=0.05,\n    bias=\"none\"\n)\n\nmodel = get_peft_model(base_model, lora_config)\nmodel.print_trainable_parameters()\n# Output: trainable params: 13,631,488 || all params: 8,030,261,248 || trainable%: 0.17%",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "Never perform full fine-tuning for domain adaptation; LoRA matches 99% of full fine-tuning performance at a fraction of the cost.",
+        "Store multiple LoRA adapters (Customer Support, Code Generation, Legal) and swap them dynamically on a single frozen base model.",
+        "QLoRA quantizes the base model to 4-bit NormalFloat (NF4) while maintaining 16-bit LoRA adapter gradients."
+      ],
+      "badge": "LoRA allows a single foundation model to serve dozens of specialized enterprise tasks simultaneously."
+    }
+  },
+  {
+    "id": "post-5",
+    "level": "LEVEL 5: REINFORCEMENT LEARNING & ALIGNMENT",
+    "levelClass": "level-4",
+    "readTime": "9 min read",
+    "audience": "AI Alignment, Safety & Research Engineers",
+    "title": "From RLHF to DPO & GRPO: The Modern Evolution of Model Alignment",
+    "lead": "How do you transform an autocomplete token predictor into an aligned, instruction-following assistant? From the complexity of PPO reward models to Direct Preference Optimization (DPO) and DeepSeek's Group Relative Policy Optimization (GRPO).",
+    "stats": {
+      "type": "info",
+      "title": "The Evolution of Post-Training Efficiency:",
+      "items": [
+        "Traditional RLHF with PPO required running <strong>4 separate models in memory simultaneously</strong> (Actor, Critic, Reference Model, Reward Model).",
+        "DPO and GRPO eliminate the Critic and Reward models, reducing post-training GPU memory overhead by <strong>over 50%</strong>."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Driving Instructor vs. Comparative Grading",
+      "text": "• <strong>RLHF (PPO):</strong> Like having a driving instructor sit next to you scoring your turns in real time with a complex telemetry system.<br>• <strong>DPO:</strong> Like a driving test where you are shown two videos of turns: Video A (safe stop) vs. Video B (running a red light). You mathematically increase the probability of Video A and decrease Video B without needing an active driving instructor."
+    },
+    "diagram": "graph TD\n    subgraph RLHF [\"Classical RLHF (PPO) - 4 Models in VRAM\"]\n        P1[\"Actor Model\"] --> R[\"Separate Reward Model\"]\n        P1 --> C[\"Value/Critic Model\"]\n        P1 --> Ref[\"Frozen Reference Model\"]\n    end\n    subgraph DPO [\"Direct Preference Optimization (DPO)\"]\n        Prompt[\"Prompt x\"] --> Win[\"Preferred Output (y_w)\"]\n        Prompt --> Lose[\"Dispreferred Output (y_l)\"]\n        Win & Lose --> Loss[\"Closed-form Implicit Reward Loss\"]\n    end\n    style DPO fill:#065f46,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure 5: RLHF Multi-Model Pipeline vs. Direct Preference Optimization (DPO)",
+    "codeTitle": "dpo_loss_formula.py",
+    "codeContent": "# Mathematical Representation of DPO Loss:\n# L_DPO = -E [ log sigma ( beta * log( pi_theta(y_w|x) / pi_ref(y_w|x) ) \n#                        - beta * log( pi_theta(y_l|x) / pi_ref(y_l|x) ) ) ]\n# Optimizes policy directly using preference pairs without training a reward model!",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "DPO has replaced classical PPO in most enterprise post-training pipelines due to stability and memory savings.",
+        "GRPO (Group Relative Policy Optimization) benchmarks multiple candidate completions against each other without a separate critic network.",
+        "High-quality preference data pairs (Chosen vs. Rejected) are 10x more impactful than raw quantity of generic text."
+      ],
+      "badge": "Post-training alignment is where raw intelligence is forged into safe, predictable enterprise behavior."
+    }
+  }
+];

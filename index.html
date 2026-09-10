@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GenAI Architecture Hub | Systems Engineering & Frontier AI</title>
+  
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Mermaid.js for architecture diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+  <!-- Top Announcement Bar -->
+  <header class="top-nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <span class="brand-badge">GENAI ARCHITECT</span>
+        <span class="brand-title">Generative AI Engineering Hub</span>
+      </div>
+      <div class="nav-actions">
+        <span class="curator-tag">⚡ Automated Hourly Pipeline • Updates Every Hour</span>
+        <button id="themeToggle" class="btn-secondary" title="Toggle Light/Dark Theme">🌓 Toggle Theme</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Reader Navigation Toolbar -->
+  <div class="reader-toolbar-sticky">
+    <div class="reader-toolbar-inner">
+      <button id="prevBtnTop" class="pager-nav-btn" title="Previous Post (or Left Arrow key)">
+        <span class="btn-arrow">←</span> Previous
+      </button>
+      
+      <div class="pager-center-status">
+        <span id="postCounter" class="counter-badge">Dispatch 1 of 5</span>
+        <select id="postDropdown" class="post-select-menu" aria-label="Jump to dispatch">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <button id="nextBtnTop" class="pager-nav-btn" title="Next Post (or Right Arrow key)">
+        Next <span class="btn-arrow">→</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Responsive Main Grid (Sidebar Index + Wide Reading Area) -->
+  <main class="app-layout">
+    
+    <!-- Left Sticky Sidebar: Dispatch Index -->
+    <aside class="dispatch-sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">GENAI CURRICULUM</span>
+        <span id="sidebarPostCount" class="sidebar-count">5 dispatches</span>
+      </div>
+
+      <!-- Quick Search Filter -->
+      <div class="sidebar-search-box">
+        <input type="text" id="searchInput" class="sidebar-input" placeholder="🔍 Search Transformers, MoE, LoRA, RAG..." />
+      </div>
+
+      <!-- Dynamic Sidebar List -->
+      <nav id="sidebarList" class="sidebar-list" aria-label="Dispatches list">
+        <!-- Rendered dynamically by app.js -->
+      </nav>
+    </aside>
+
+    <!-- Right Primary Pane: Active Dispatch -->
+    <section class="reader-main">
+      
+      <!-- Top Pills for Tablet/Mobile Navigation -->
+      <div class="mobile-pills-container" id="mobileLevelTabs">
+        <!-- Rendered dynamically by app.js for smaller screens -->
+      </div>
+
+      <!-- Active Post Card -->
+      <div id="single-post-container" class="single-post-wrapper">
+        <div class="loading-state">Loading GenAI architectural dispatch...</div>
+      </div>
+
+      <!-- Bottom Next / Prev Navigation Cards -->
+      <nav class="post-footer-nav" aria-label="Dispatch navigation">
+        <div id="footerPrevCard" class="nav-card prev-card">
+          <span class="card-hint">← PREVIOUS DISPATCH</span>
+          <span class="card-title" id="footerPrevTitle">-</span>
+        </div>
+        <div id="footerNextCard" class="nav-card next-card">
+          <span class="card-hint">NEXT DISPATCH →</span>
+          <span class="card-title" id="footerNextTitle">-</span>
+        </div>
+      </nav>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p><strong>GenAI Architecture Hub</strong> • Curated for AI Practitioners, Systems Architects & Research Engineers</p>
+      <p class="footer-sub">Tip: Use your keyboard <strong>← Left</strong> and <strong>Right →</strong> arrow keys to browse between dispatches comfortably.</p>
+    </div>
+  </footer>
+
+  <!-- Posts Data (offline and file:// friendly) -->
+  <script src="data/posts.js"></script>
+  <!-- Client Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
