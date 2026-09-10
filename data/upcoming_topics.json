@@ -1,40 +1,5 @@
 [
   {
-    "id": "post-6",
-    "topic": "Speculative Decoding",
-    "level": "LEVEL 6: LATENCY & INFERENCE ACCELERATION",
-    "levelClass": "level-3",
-    "readTime": "8 min read",
-    "audience": "MLOps & High-Throughput Inference Engineers",
-    "title": "Speculative Decoding: How a Small Draft Model Makes Big LLMs 3x Faster",
-    "lead": "Autoregressive token generation generates exactly one token per forward pass, bottlenecked entirely by GPU memory latency. Speculative decoding breaks this law: using a tiny 1B draft model to generate candidate tokens in parallel.",
-    "stats": {
-      "type": "success",
-      "title": "The Speedup Metrics of Speculative Inference:",
-      "items": [
-        "Speculative decoding achieves <strong>2.2x to 3.4x faster tokens-per-second</strong> on 70B models with mathematically identical output.",
-        "Zero loss in model accuracy because the large target model runs a single verification pass to accept or reject drafted tokens."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: The Legal Intern Drafting Contracts",
-      "text": "A senior law partner reads at 500 words per minute, but dictating a fresh contract word-by-word is agonizingly slow. Instead, a fast junior paralegal drafts 5 sentences. The partner scans all 5 sentences in one second, approves the first 4, and corrects the 5th.<br><br><strong>Speculative decoding is the paralegal + partner model:</strong> A tiny 1B draft model guesses 5 tokens cheaply; the giant 70B model verifies all 5 tokens in parallel in a single GPU forward pass."
-    },
-    "diagram": "sequenceDiagram\n    autonumber\n    participant Draft as 1B Draft Model (Fast)\n    participant Target as 70B Target Model (Accurate)\n    participant Client as Output Stream\n    \n    Draft->>Draft: Generates [T1, T2, T3, T4] (40ms total)\n    Draft->>Target: Send 4 candidate tokens\n    Note over Target: Parallel Verification Pass (Single GPU step!)\n    Target->>Target: Accepts T1, T2, T3. Rejects T4, emits T4_corrected.\n    Target-->>Client: Emits 4 verified tokens in the time of 1!",
-    "diagramCaption": "Figure 6: Draft Generation and Parallel Target Verification",
-    "codeTitle": "vllm_speculative_server.sh",
-    "codeContent": "# Launching vLLM with LLaMA-3 70B using LLaMA-3 8B as speculative draft model\npython -m vllm.entrypoints.openai.api_server \\\n    --model meta-llama/Meta-Llama-3-70B-Instruct \\\n    --speculative-model meta-llama/Meta-Llama-3-8B-Instruct \\\n    --num-speculative-tokens 5 \\\n    --port 8000",
-    "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
-      "items": [
-        "Speculative decoding delivers free speedups whenever a target model and draft model share the same tokenizer vocabulary.",
-        "Ideal for tasks with high predictability (code syntax, JSON schemas, structured data).",
-        "Supported natively in modern serving engines: vLLM, TensorRT-LLM, and TGI."
-      ],
-      "badge": "Speculative decoding breaks memory bandwidth bottlenecks without modifying weights."
-    }
-  },
-  {
     "id": "post-7",
     "topic": "Hybrid Search: Dense Vectors vs Sparse BM25",
     "level": "LEVEL 7: ENTERPRISE INFORMATION RETRIEVAL",
