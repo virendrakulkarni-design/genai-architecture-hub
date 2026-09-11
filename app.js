@@ -98,13 +98,13 @@ async function showPost(index, shouldScroll = true) {
     <article id="${post.id}" class="post-card">
       <div class="post-header">
         <div class="post-meta">
-          <span class="difficulty-badge ${post.levelClass || 'level-1'}">${escapeHtml(post.level)}</span>
-          ${isLatest ? '<span class="badge-latest">LATEST DISPATCH</span>' : ''}
-          ${post.publishedAt ? `<span class="post-date">Published: ${escapeHtml(post.publishedAt)}</span>` : ''}
-          <span class="read-time">${escapeHtml(post.readTime)}</span>
-          <span class="target-role">Audience: ${escapeHtml(post.audience)}</span>
+          <span class="meta-pill meta-level ${post.levelClass || 'level-1'}">${escapeHtml(post.level)}</span>
+          ${isLatest ? '<span class="meta-pill meta-latest">LATEST DISPATCH</span>' : ''}
+          ${post.publishedAt ? `<span class="meta-pill meta-date">Published: ${escapeHtml(post.publishedAt)}</span>` : ''}
+          <span class="meta-pill meta-time">${escapeHtml(post.readTime)}</span>
+          <span class="meta-pill meta-role">Audience: ${escapeHtml(post.audience)}</span>
         </div>
-        <h2 class="post-title">${escapeHtml(post.title)}</h2>
+        <h1 class="post-title">${escapeHtml(post.title)}</h1>
         <p class="post-lead">${escapeHtml(post.lead)}</p>
         
         <div class="action-bar">
@@ -117,44 +117,54 @@ async function showPost(index, shouldScroll = true) {
       <div class="post-body">
         <!-- Reality Check Stats Box -->
         <div class="stat-callout ${post.stats.type || 'info'}">
-          <div class="stat-icon">${getStatIcon(post.stats.type)}</div>
-          <div class="stat-text">
-            <strong>${escapeHtml(post.stats.title)}</strong>
-            <ul>
-              ${post.stats.items.map(item => `<li>${item}</li>`).join('')}
-            </ul>
+          <div class="stat-callout-header">
+            <span class="stat-badge ${post.stats.type || 'info'}">${getStatIcon(post.stats.type)}</span>
+            <h3 class="stat-heading">${escapeHtml(post.stats.title)}</h3>
           </div>
+          <ul class="stat-list">
+            ${post.stats.items.map(item => `<li>${item}</li>`).join('')}
+          </ul>
         </div>
 
         <!-- 60-Second Mental Model -->
-        <h3>${escapeHtml(post.mentalModel.title)}</h3>
-        <p>${post.mentalModel.text}</p>
+        <section class="post-section">
+          <h2 class="section-title">${escapeHtml(post.mentalModel.title)}</h2>
+          <div class="section-prose">${post.mentalModel.text}</div>
+        </section>
 
         <!-- Architecture Diagram -->
-        <div class="diagram-wrapper">
-          <div class="mermaid">
+        <section class="post-section">
+          <h2 class="section-title">Architecture Blueprint &amp; Flow</h2>
+          <div class="diagram-wrapper">
+            <div class="mermaid">
 ${post.diagram}
+            </div>
+            <span class="diagram-caption">${escapeHtml(post.diagramCaption)}</span>
           </div>
-          <span class="diagram-caption">${escapeHtml(post.diagramCaption)}</span>
-        </div>
+        </section>
 
         <!-- Code Block -->
-        <div class="code-wrapper">
-          <div class="code-header">
-            <span>${escapeHtml(post.codeTitle)}</span>
-            <button class="btn-copy-code" onclick="copySnippet(this)">Copy</button>
+        <section class="post-section">
+          <h2 class="section-title">Production Implementation</h2>
+          <div class="code-wrapper">
+            <div class="code-header">
+              <span class="code-filename">${escapeHtml(post.codeTitle)}</span>
+              <button class="btn-copy-code" onclick="copySnippet(this)">Copy</button>
+            </div>
+            <pre><code>${escapeHtml(post.codeContent)}</code></pre>
           </div>
-          <pre><code>${escapeHtml(post.codeContent)}</code></pre>
-        </div>
+        </section>
 
         <!-- Key Takeaways -->
-        <div class="takeaway-box">
-          <h4>${escapeHtml(post.takeaway.title)}</h4>
-          <ol>
-            ${post.takeaway.items.map(item => `<li>${item}</li>`).join('')}
-          </ol>
-          <p class="takeaway-badge">${escapeHtml(post.takeaway.badge)}</p>
-        </div>
+        <section class="post-section">
+          <div class="takeaway-box">
+            <h2 class="section-title takeaway-title">${escapeHtml(post.takeaway.title)}</h2>
+            <ol class="takeaway-list">
+              ${post.takeaway.items.map(item => `<li>${item}</li>`).join('')}
+            </ol>
+            <p class="takeaway-badge">${escapeHtml(post.takeaway.badge)}</p>
+          </div>
+        </section>
       </div>
     </article>
   `;
