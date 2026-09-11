@@ -24,7 +24,7 @@
     "codeTitle": "test_time_search_scaffold.py",
     "codeContent": "# Conceptual Test-Time Rollout & Self-Verification\ndef test_time_reasoning(model, prompt, num_rollouts=5):\n    candidates = [model.generate_thought_chain(prompt) for _ in range(num_rollouts)]\n    verified = [c for c in candidates if verify_math_constraints(c)]\n    return majority_vote(verified) if verified else candidates[0]",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Inference compute is the new scaling vector when pre-training data hits human text limits.",
         "Reinforcement learning from verifiable rewards (code execution, math proofs) teaches models to self-correct.",

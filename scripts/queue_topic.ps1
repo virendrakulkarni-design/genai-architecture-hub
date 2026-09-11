@@ -41,7 +41,7 @@ $newEntry = [PSCustomObject]@{
     codeTitle = "genai_pipeline.py"
     codeContent = "# Enterprise Implementation for $Topic`n# Enforces deterministic constraints and low-latency throughput."
     takeaway = [PSCustomObject]@{
-        title = "🎁 Architect's 'Monday Morning' Takeaway"
+        title = "Key Takeaways"
         items = @(
             "Benchmark $Topic with realistic production workloads before deployment.",
             "Establish automated semantic evaluation baselines."

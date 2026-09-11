@@ -56,6 +56,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 6. Display active post
   showPost(currentIndex, false);
+
+  // 7. Track Hub Visitor Telemetry
+  initVisitorTracking();
 });
 
 /**
@@ -88,13 +91,17 @@ async function showPost(index, shouldScroll = true) {
   const container = document.getElementById('single-post-container');
   if (!container) return;
 
+  const isLatest = (currentIndex === allPosts.length - 1);
+
   // Render Post HTML
   container.innerHTML = `
     <article id="${post.id}" class="post-card">
       <div class="post-header">
         <div class="post-meta">
           <span class="difficulty-badge ${post.levelClass || 'level-1'}">${escapeHtml(post.level)}</span>
-          <span class="read-time">⏱️ ${escapeHtml(post.readTime)}</span>
+          ${isLatest ? '<span class="badge-latest">LATEST DISPATCH</span>' : ''}
+          ${post.publishedAt ? `<span class="post-date">Published: ${escapeHtml(post.publishedAt)}</span>` : ''}
+          <span class="read-time">${escapeHtml(post.readTime)}</span>
           <span class="target-role">Audience: ${escapeHtml(post.audience)}</span>
         </div>
         <h2 class="post-title">${escapeHtml(post.title)}</h2>
@@ -102,7 +109,7 @@ async function showPost(index, shouldScroll = true) {
         
         <div class="action-bar">
           <button class="btn-copy-slack" onclick="copyPostMarkdown('${post.id}')">
-            📋 Copy Post for Slack / Teams / Confluence
+            Copy Post for Slack / Teams / Confluence
           </button>
         </div>
       </div>
@@ -140,7 +147,7 @@ ${post.diagram}
           <pre><code>${escapeHtml(post.codeContent)}</code></pre>
         </div>
 
-        <!-- Monday Morning Takeaway -->
+        <!-- Key Takeaways -->
         <div class="takeaway-box">
           <h4>${escapeHtml(post.takeaway.title)}</h4>
           <ol>
@@ -254,11 +261,18 @@ function renderSidebarList(posts) {
   listContainer.innerHTML = posts.map((post) => {
     const originalIndex = allPosts.findIndex(p => p.id === post.id);
     const shortLevel = post.level.split(':')[0] || `LEVEL ${originalIndex + 1}`;
+    const isLatest = (originalIndex === allPosts.length - 1);
     return `
       <div class="sidebar-item ${originalIndex === currentIndex ? 'active' : ''}" data-index="${originalIndex}" onclick="showPost(${originalIndex})">
-        <span class="sidebar-item-level">${escapeHtml(shortLevel)}</span>
+        <div class="sidebar-item-top">
+          <span class="sidebar-item-level">${escapeHtml(shortLevel)}</span>
+          ${isLatest ? '<span class="sidebar-latest-tag">LATEST</span>' : ''}
+        </div>
         <div class="sidebar-item-title">${escapeHtml(post.title)}</div>
-        <div class="sidebar-item-meta">⏱️ ${escapeHtml(post.readTime)}</div>
+        <div class="sidebar-item-meta">
+          <span>${escapeHtml(post.readTime)}</span>
+          ${post.publishedAt ? `<span class="sidebar-item-date">${escapeHtml(post.publishedAt)}</span>` : ''}
+        </div>
       </div>
     `;
   }).join('');
@@ -388,10 +402,10 @@ function initSidebarSearch() {
 
 function getStatIcon(type) {
   switch (type) {
-    case 'danger': return '⚠️';
-    case 'success': return '💰';
-    case 'warning': return '🔥';
-    default: return '💡';
+    case 'danger': return 'CRITICAL IMPACT';
+    case 'success': return 'BENCHMARK METRIC';
+    case 'warning': return 'SYSTEM WARNING';
+    default: return 'ENGINEERING DATA';
   }
 }
 
@@ -404,11 +418,11 @@ function copySnippet(button) {
   
   navigator.clipboard.writeText(pre.innerText).then(() => {
     const originalText = button.innerText;
-    button.innerText = '✓ Copied';
+    button.innerText = 'Copied';
     setTimeout(() => {
       button.innerText = originalText;
     }, 2000);
-    showToast("Code snippet copied to clipboard!");
+    showToast("Code snippet copied to clipboard");
   }).catch(err => {
     console.error("Failed to copy snippet: ", err);
   });
@@ -427,28 +441,28 @@ function copyPostMarkdown(postId) {
   const markdown = `*GenAI Architectural Dispatch | ${post.level}*
 ═══════════════════════════════════════════════════════════════
 *${post.title}*
-
+${post.publishedAt ? `Published: ${post.publishedAt}\n` : ''}
 ${post.lead}
 
-🚨 *${post.stats.title}*
+*${post.stats.title}*
 ${statsText}
 
-💡 *${post.mentalModel.title}*
+*${post.mentalModel.title}*
 ${stripHtml(post.mentalModel.text)}
 
-💻 *PRODUCTION CODE / IMPLEMENTATION:*
+*PRODUCTION CODE / IMPLEMENTATION:*
 \`\`\`
 ${post.codeContent}
 \`\`\`
 
-🎁 *${post.takeaway.title}*
+*${post.takeaway.title}*
 ${takeawayText}
 
-📌 *Key Takeaway:* ${post.takeaway.badge}
+*Key Takeaway:* ${post.takeaway.badge}
 `;
 
   navigator.clipboard.writeText(markdown).then(() => {
-    showToast(`✓ Copied "${post.title.slice(0, 22)}..." ready for Slack/Teams!`);
+    showToast(`Copied "${post.title.slice(0, 22)}..." ready for Slack/Teams`);
   }).catch(err => {
     console.error("Copy failed: ", err);
   });
@@ -486,8 +500,27 @@ function initTheme() {
       document.body.classList.toggle('light-theme');
       const isLight = document.body.classList.contains('light-theme');
       localStorage.setItem('genai-hub-theme', isLight ? 'light' : 'dark');
-      showToast(isLight ? "☀️ Switched to Light Theme" : "🌙 Switched to Dark Theme");
+      showToast(isLight ? "Switched to Light Theme" : "Switched to Dark Theme");
       showPost(currentIndex, false);
     });
+  }
+}
+
+/**
+ * Visitor Telemetry Tracker
+ */
+function initVisitorTracking() {
+  try {
+    const visitsKey = 'genai_hub_total_visits';
+    let visits = parseInt(localStorage.getItem(visitsKey) || '0', 10);
+    visits += 1;
+    localStorage.setItem(visitsKey, visits.toString());
+
+    const badge = document.querySelector('.visitor-tracker-badge');
+    if (badge) {
+      badge.title = `Total visits tracked on this device: ${visits}. Live hub telemetry.`;
+    }
+  } catch (e) {
+    // Graceful fallback for sandboxed/restricted iframe environments
   }
 }

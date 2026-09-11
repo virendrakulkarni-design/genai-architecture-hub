@@ -24,14 +24,15 @@
     "codeTitle": "self_attention_numpy.py",
     "codeContent": "import numpy as np\n\ndef scaled_dot_product_attention(Q, K, V, mask=None):\n    d_k = Q.shape[-1]\n    scores = np.matmul(Q, K.T) / np.sqrt(d_k)\n    if mask is not None:\n        scores += (mask * -1e9)\n    attention_weights = np.exp(scores) / np.sum(np.exp(scores), axis=-1, keepdims=True)\n    return np.matmul(attention_weights, V), attention_weights\n\n# Q, K, V dimensions: [seq_len, d_k]\noutput, weights = scaled_dot_product_attention(Q_matrix, K_matrix, V_matrix)",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Attention is a soft, differentiable hash-table lookup across tokens.",
         "Quadratic O(N²) memory complexity in naive attention is why KV-caching and FlashAttention are mandatory in production.",
         "Tokens gain meaning purely from their context: 'Apple' the fruit vs 'Apple' the stock ticker get distinct vectors after layer 1."
       ],
       "badge": "Every multi-billion parameter model is just stacked blocks of Attention + Feed-Forward layers."
-    }
+    },
+    "publishedAt": "2026-09-10 18:00 UTC"
   },
   {
     "id": "post-2",
@@ -58,14 +59,15 @@
     "codeTitle": "sparse_moe_routing.py",
     "codeContent": "import torch\nimport torch.nn as nn\nimport torch.nn.functional as F\n\nclass TopKRouter(nn.Module):\n    def __init__(self, d_model, num_experts, top_k=2):\n        super().__init__()\n        self.gate = nn.Linear(d_model, num_experts, bias=False)\n        self.top_k = top_k\n\n    def forward(self, x):\n        logits = self.gate(x) # [batch, seq_len, num_experts]\n        weights, indices = torch.topk(F.softmax(logits, dim=-1), self.top_k, dim=-1)\n        # Normalize top-k weights to sum to 1.0\n        weights = weights / weights.sum(dim=-1, keepdim=True)\n        return weights, indices",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "MoE decouples total knowledge capacity (parameter count) from active computation cost (FLOPs).",
         "The primary bottleneck shifts from GPU compute to GPU memory bandwidth (RAM capacity to hold all expert weights).",
         "Load balancing loss is critical during training to prevent router collapse (all tokens routing to expert #1)."
       ],
       "badge": "MoE is why open frontier models now rival proprietary giants at a fraction of the cost."
-    }
+    },
+    "publishedAt": "2026-09-10 19:00 UTC"
   },
   {
     "id": "post-3",
@@ -92,14 +94,15 @@
     "codeTitle": "vllm_awq_deployment.sh",
     "codeContent": "# Deploying an AWQ Quantized 70B model using vLLM for production throughput\npython -m vllm.entrypoints.openai.api_server \\\n    --model Tech-Org/Llama-3-70B-Instruct-AWQ \\\n    --quantization awq \\\n    --dtype auto \\\n    --gpu-memory-utilization 0.95 \\\n    --max-model-len 8192 \\\n    --port 8000",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "LLM inference is memory-bandwidth bound, not compute bound. Quantization speeds up generation directly by moving 4x fewer bytes across the GPU bus.",
         "Use AWQ (Activation-aware Weight Quantization) for server GPUs and vLLM.",
         "Use GGUF / llama.cpp for edge devices, Apple Silicon (Metal), and local desktop deployment."
       ],
       "badge": "Quantization slashes GPU infrastructure costs by 75% with statistically zero accuracy loss."
-    }
+    },
+    "publishedAt": "2026-09-10 20:00 UTC"
   },
   {
     "id": "post-4",
@@ -126,14 +129,15 @@
     "codeTitle": "peft_lora_config.py",
     "codeContent": "from peft import LoraConfig, get_peft_model, TaskType\n\nlora_config = LoraConfig(\n    task_type=TaskType.CAUSAL_LM,\n    r=16,               # Rank dimension (typically 8, 16, or 32)\n    lora_alpha=32,      # Scaling factor (usually 2x rank)\n    target_modules=[\"q_proj\", \"v_proj\", \"k_proj\", \"o_proj\"],\n    lora_dropout=0.05,\n    bias=\"none\"\n)\n\nmodel = get_peft_model(base_model, lora_config)\nmodel.print_trainable_parameters()\n# Output: trainable params: 13,631,488 || all params: 8,030,261,248 || trainable%: 0.17%",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Never perform full fine-tuning for domain adaptation; LoRA matches 99% of full fine-tuning performance at a fraction of the cost.",
         "Store multiple LoRA adapters (Customer Support, Code Generation, Legal) and swap them dynamically on a single frozen base model.",
         "QLoRA quantizes the base model to 4-bit NormalFloat (NF4) while maintaining 16-bit LoRA adapter gradients."
       ],
       "badge": "LoRA allows a single foundation model to serve dozens of specialized enterprise tasks simultaneously."
-    }
+    },
+    "publishedAt": "2026-09-10 21:00 UTC"
   },
   {
     "id": "post-5",
@@ -160,14 +164,15 @@
     "codeTitle": "dpo_loss_formula.py",
     "codeContent": "# Mathematical Representation of DPO Loss:\n# L_DPO = -E [ log sigma ( beta * log( pi_theta(y_w|x) / pi_ref(y_w|x) ) \n#                        - beta * log( pi_theta(y_l|x) / pi_ref(y_l|x) ) ) ]\n# Optimizes policy directly using preference pairs without training a reward model!",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "DPO has replaced classical PPO in most enterprise post-training pipelines due to stability and memory savings.",
         "GRPO (Group Relative Policy Optimization) benchmarks multiple candidate completions against each other without a separate critic network.",
         "High-quality preference data pairs (Chosen vs. Rejected) are 10x more impactful than raw quantity of generic text."
       ],
       "badge": "Post-training alignment is where raw intelligence is forged into safe, predictable enterprise behavior."
-    }
+    },
+    "publishedAt": "2026-09-10 22:00 UTC"
   },
   {
     "id": "post-6",
@@ -195,14 +200,15 @@
     "codeTitle": "vllm_speculative_server.sh",
     "codeContent": "# Launching vLLM with LLaMA-3 70B using LLaMA-3 8B as speculative draft model\npython -m vllm.entrypoints.openai.api_server \\\n    --model meta-llama/Meta-Llama-3-70B-Instruct \\\n    --speculative-model meta-llama/Meta-Llama-3-8B-Instruct \\\n    --num-speculative-tokens 5 \\\n    --port 8000",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Speculative decoding delivers free speedups whenever a target model and draft model share the same tokenizer vocabulary.",
         "Ideal for tasks with high predictability (code syntax, JSON schemas, structured data).",
         "Supported natively in modern serving engines: vLLM, TensorRT-LLM, and TGI."
       ],
       "badge": "Speculative decoding breaks memory bandwidth bottlenecks without modifying weights."
-    }
+    },
+    "publishedAt": "2026-09-10 23:04 UTC"
   },
   {
     "id": "post-7",
@@ -230,14 +236,15 @@
     "codeTitle": "reciprocal_rank_fusion.py",
     "codeContent": "def reciprocal_rank_fusion(dense_ranks, sparse_ranks, k=60):\n    rrf_scores = {}\n    for rank, doc_id in enumerate(dense_ranks):\n        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)\n    for rank, doc_id in enumerate(sparse_ranks):\n        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)\n    # Sort by descending fused score\n    return sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Never deploy pure vector search for enterprise documentation with product codes, IDs, or technical acronyms.",
         "Combine BM25 (Elasticsearch/OpenSearch) with Dense Embeddings (pgvector/Pinecone/Qdrant).",
         "Re-rank top hybrid candidates using a Cross-Encoder (Cohere Rerank or BGE-Reranker)."
       ],
       "badge": "Hybrid Search + Reranking is the single highest-ROI upgrade in any enterprise RAG pipeline."
-    }
+    },
+    "publishedAt": "2026-09-11 04:18 UTC"
   },
   {
     "id": "post-8",
@@ -265,13 +272,14 @@
     "codeTitle": "vllm_paged_attention_config.py",
     "codeContent": "from vllm import LLM, SamplingParams\n\n# Configure block size and GPU memory utilization\nllm = LLM(\n    model=\"meta-llama/Meta-Llama-3-8B-Instruct\",\n    block_size=16, # Size of each PagedAttention block in tokens\n    gpu_memory_utilization=0.90,\n    max_model_len=8192\n)\n\nprompts = [\"Explain Paxos consensus\", \"Write a quicksort in Rust\"]\nsampling_params = SamplingParams(temperature=0.7, max_tokens=512)\noutputs = llm.generate(prompts, sampling_params)",
     "takeaway": {
-      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "title": "Key Takeaways",
       "items": [
         "Memory fragmentation, not raw compute, is the enemy of high-concurrency LLM deployments.",
         "PagedAttention allows multiple requests to share common prompt prefixes (e.g. system prompts) with zero copy.",
         "FlashAttention optimizes GPU SRAM vs HBM memory transfers to compute attention in O(N) IO complexity."
       ],
       "badge": "PagedAttention is the foundational breakthrough behind modern enterprise LLM inference engines."
-    }
+    },
+    "publishedAt": "2026-09-11 09:29 UTC"
   }
 ]
