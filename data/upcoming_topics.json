@@ -1,40 +1,5 @@
 [
   {
-    "id": "post-9",
-    "topic": "Diffusion Models & Flow Matching",
-    "level": "LEVEL 9: GENERATIVE DYNAMICS & FLOW MATCHING",
-    "levelClass": "level-4",
-    "readTime": "9 min read",
-    "audience": "Frontier AI & Generative Systems Engineers",
-    "title": "Flow Matching vs. Diffusion: Why Continuous Normalizing Flows Are Replacing Score-Based Models",
-    "lead": "Standard diffusion models require 50 to 100 denoising steps through complex stochastic differential equations. Flow Matching straightens probability trajectories, cutting sampling steps by 80% while retaining generative quality.",
-    "stats": {
-      "type": "success",
-      "title": "Generative Efficiency Metrics:",
-      "items": [
-        "Optimal Transport Flow Matching achieves parity with standard score-based diffusion in only 10 to 16 Euler steps.",
-        "Straight-line trajectories eliminate trajectory curvature, reducing inference latency from 3.2 seconds down to 420 milliseconds on NVIDIA H100 GPUs."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: Curved Drifts vs. Straight Highways",
-      "text": "Traditional diffusion pushes random noise particles along curved paths with unpredictable brownian drift. Flow Matching defines a direct velocity vector pointing from pure Gaussian noise directly to the target data distribution.<br><br><strong>Straight trajectories allow deterministic numerical ODE solvers to take large, accurate steps without veering off course.</strong>"
-    },
-    "diagram": "graph LR\n    Noise[\"Gaussian Noise Distribution N(0, I)\"] --> OT[\"Optimal Transport Velocity Field\"]\n    OT --> Step1[\"Euler Step 1 (t=0.2)\"]\n    Step1 --> Step2[\"Euler Step 2 (t=0.6)\"]\n    Step2 --> Data[\"Reconstructed Data Distribution (t=1.0)\"]\n    style Noise fill:#1e293b,stroke:#64748b,color:#fff\n    style Data fill:#065f46,stroke:#10b981,color:#fff",
-    "diagramCaption": "Figure 9: Deterministic Straight-Path Trajectories in Flow Matching",
-    "codeTitle": "flow_matching_euler.py",
-    "codeContent": "# Minimal Euler Solver for Flow Matching\ndef flow_matching_sample(model, noise_latents, steps=10):\n    dt = 1.0 / steps\n    x = noise_latents\n    for i in range(steps):\n        t = torch.full((x.shape[0],), i * dt, device=x.device)\n        velocity = model(x, t)\n        x = x + velocity * dt\n    return x",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Optimal Transport vectors straighten the generation path between noise and high-fidelity output.",
-        "Reduced step counts directly cut real-time serving infrastructure costs.",
-        "Deterministic ODE samplers produce predictable, reproducible inference latencies."
-      ],
-      "badge": "Flow matching bridges continuous physics and generative AI with predictable sample trajectories."
-    }
-  },
-  {
     "id": "post-10",
     "topic": "State Space Models & Mamba Architecture",
     "level": "LEVEL 10: SUB-QUADRATIC ARCHITECTURES",
