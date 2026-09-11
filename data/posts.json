@@ -353,5 +353,41 @@
       "badge": "Flow matching bridges continuous physics and generative AI with predictable sample trajectories."
     },
     "publishedAt": "2026-09-11 21:08 UTC"
+  },
+  {
+    "id": "post-11",
+    "topic": "State Space Models & Mamba Architecture",
+    "level": "LEVEL 10: SUB-QUADRATIC ARCHITECTURES",
+    "levelClass": "level-4",
+    "readTime": "8 min read",
+    "audience": "Systems Architects & Deep Learning Engineers",
+    "title": "Mamba and Selective State-Space Models: Breaking the Attention Quadratic Bottleneck",
+    "lead": "Transformer self-attention scales quadratically with sequence length, causing memory limits at 128k+ contexts. Selective State-Space Models (SSMs) like Mamba process arbitrary length sequences with linear complexity.",
+    "stats": {
+      "type": "info",
+      "title": "Sequence Scaling Benchmarks:",
+      "items": [
+        "Self-attention memory footprints scale O(N^2) as sequence lengths grow beyond 64k tokens.",
+        "Selective SSMs maintain a constant-size hidden state, achieving up to 5x higher inference throughput on 100k+ token document processing."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Constant-Size Memory vs. Growing History",
+      "text": "A standard Transformer keeps every past token in its KV-cache, demanding more RAM with every token generated. An SSM continuously updates a fixed-size internal state matrix, choosing which signals to remember and which to discard.<br><br><strong>Selective scan turns the recurrent state update into an input-dependent filter that trains in parallel and serves in constant memory.</strong>"
+    },
+    "diagram": "graph TD\n    Tokens[\"Input Token Stream x_t\"] --> Selective[\"Selective Scan Gate: B(x), C(x), delta(x)\"]\n    Selective --> Hidden[\"Constant Hidden State h_t = A*h_(t-1) + B*x_t\"]\n    Hidden --> Out[\"Output Prediction y_t = C*h_t\"]\n    style Tokens fill:#1e293b,stroke:#64748b,color:#fff\n    style Hidden fill:#065f46,stroke:#10b981,color:#fff",
+    "diagramCaption": "Figure 10: Input-Dependent Selective Scanning Architecture",
+    "codeTitle": "selective_scan_primitive.py",
+    "codeContent": "# Conceptual Selective Scan Update\ndef selective_scan_step(h_prev, x_t, A, B_t, C_t, delta_t):\n    # Input-dependent discretization\n    A_bar = torch.exp(delta_t * A)\n    B_bar = delta_t * B_t\n    h_next = A_bar * h_prev + B_bar * x_t\n    y_t = C_t * h_next\n    return h_next, y_t",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Linear time complexity unlocks unbounded sequence context lengths without quadratic memory explosions.",
+        "Hardware-aware scan kernels fuse state updates into high-speed SRAM, avoiding GPU DRAM bottlenecks.",
+        "Hybrid Transformer-SSM models blend precise recall with linear generation efficiency."
+      ],
+      "badge": "Sub-quadratic architectures transform long-context processing from a hardware bottleneck into an engineering reality."
+    },
+    "publishedAt": "2026-09-11 23:13 UTC"
   }
 ]
