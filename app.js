@@ -518,6 +518,8 @@ function initTheme() {
 
 /**
  * Visitor Telemetry Tracker
+ * Dynamically cache-busts the counter badge on page loads so every real visit
+ * triggers a hit increment and fetches the latest count from hits.sh.
  */
 function initVisitorTracking() {
   try {
@@ -526,9 +528,20 @@ function initVisitorTracking() {
     visits += 1;
     localStorage.setItem(visitsKey, visits.toString());
 
+    // Bust browser/CDN image cache so the live counter increments on every visit
+    const cacheBuster = Date.now();
+    const trackerImgs = document.querySelectorAll('.visitor-counter-img, .footer-visitor-badge');
+    trackerImgs.forEach((img) => {
+      const currentSrc = img.getAttribute('src');
+      if (currentSrc && !currentSrc.includes('_t=')) {
+        const separator = currentSrc.includes('?') ? '&' : '?';
+        img.src = `${currentSrc}${separator}_t=${cacheBuster}`;
+      }
+    });
+
     const badge = document.querySelector('.visitor-tracker-badge');
     if (badge) {
-      badge.title = `Total visits tracked on this device: ${visits}. Live hub telemetry.`;
+      badge.title = `Your device visits: ${visits} | Live hub telemetry`;
     }
   } catch (e) {
     // Graceful fallback for sandboxed/restricted iframe environments

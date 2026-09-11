@@ -1,6 +1,6 @@
 # GenAI Architecture Hub | Systems Engineering & Frontier AI
 
-[![Hub Visitors](https://komarev.com/ghpvc/?username=virendrakulkarni-genai-architecture-hub&label=Hub+Visitors&color=10b981&style=flat-square)](https://github.com/virendrakulkarni-design/genai-architecture-hub)
+[![Hub Visitors](https://hits.sh/virendrakulkarni-design.github.io/genai-architecture-hub.svg?label=Hub+Visitors&color=10b981)](https://github.com/virendrakulkarni-design/genai-architecture-hub)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A high-throughput, data-driven engineering blog and community dispatch hub explaining **Generative AI concepts, scaling laws, systems architecture, and production best practices**.
