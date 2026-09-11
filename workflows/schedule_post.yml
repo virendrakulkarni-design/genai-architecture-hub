@@ -1,9 +1,9 @@
-name: Hourly GenAI Architectural Publisher
+name: 5-Minute GenAI Architectural Publisher
 
 on:
   schedule:
-    # Runs every hour at minute 0 (Hourly Frequency)
-    - cron: '0 * * * *'
+    # Runs every 5 minutes
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       custom_topic:
@@ -56,7 +56,7 @@ jobs:
           git config --global user.name "GenAI Architecture Bot"
           git config --global user.email "bot@users.noreply.github.com"
           git add data/
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-publish: New hourly GenAI dispatch [skip ci]"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-publish: New GenAI dispatch [skip ci]"
           git push
 
       - name: Setup GitHub Pages
