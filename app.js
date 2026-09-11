@@ -191,6 +191,9 @@ ${post.diagram}
     const top = container.getBoundingClientRect().top + window.pageYOffset - offset;
     window.scrollTo({ top, behavior: 'smooth' });
   }
+
+  // Track active dwell time for LinkedIn-style impression
+  startDwellTracker();
 }
 
 /**
@@ -517,33 +520,119 @@ function initTheme() {
 }
 
 /**
- * Visitor Telemetry Tracker
- * Dynamically cache-busts the counter badge on page loads so every real visit
- * triggers a hit increment and fetches the latest count from hits.sh.
+ * LinkedIn-Style Dwell Impression Engine
+ * Registers an impression ONLY if the user actively keeps the dispatch open
+ * and visible for more than 3.5 seconds (3-4 second dwell threshold).
+ * Handles tab visibility, window blur/focus, and single-page dispatch navigation.
  */
+const DWELL_THRESHOLD_MS = 3500; // 3.5 seconds dwell engagement
+let dwellTimer = null;
+let dwellStartTime = 0;
+let accumulatedDwellMs = 0;
+let postImpressionLogged = {};
+
 function initVisitorTracking() {
-  try {
-    const visitsKey = 'genai_hub_total_visits';
-    let visits = parseInt(localStorage.getItem(visitsKey) || '0', 10);
-    visits += 1;
-    localStorage.setItem(visitsKey, visits.toString());
+  startDwellTracker();
 
-    // Bust browser/CDN image cache so the live counter increments on every visit
-    const cacheBuster = Date.now();
-    const trackerImgs = document.querySelectorAll('.visitor-counter-img, .footer-visitor-badge');
-    trackerImgs.forEach((img) => {
-      const currentSrc = img.getAttribute('src');
-      if (currentSrc && !currentSrc.includes('_t=')) {
-        const separator = currentSrc.includes('?') ? '&' : '?';
-        img.src = `${currentSrc}${separator}_t=${cacheBuster}`;
-      }
-    });
-
-    const badge = document.querySelector('.visitor-tracker-badge');
-    if (badge) {
-      badge.title = `Your device visits: ${visits} | Live hub telemetry`;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      resumeDwellTracker();
+    } else {
+      pauseDwellTracker();
     }
-  } catch (e) {
-    // Graceful fallback for sandboxed/restricted iframe environments
+  });
+
+  window.addEventListener('focus', resumeDwellTracker);
+  window.addEventListener('blur', pauseDwellTracker);
+}
+
+function startDwellTracker() {
+  const currentPost = allPosts[currentIndex];
+  if (!currentPost) return;
+  const postId = currentPost.id;
+
+  clearTimeout(dwellTimer);
+  dwellStartTime = (document.visibilityState === 'visible') ? Date.now() : 0;
+  accumulatedDwellMs = 0;
+
+  if (postImpressionLogged[postId]) {
+    // Already logged for this dispatch in this session; keep the current badge displayed
+    return;
   }
+
+  if (document.visibilityState === 'visible') {
+    dwellTimer = setTimeout(() => {
+      onDwellThresholdReached(postId);
+    }, DWELL_THRESHOLD_MS);
+  }
+}
+
+function pauseDwellTracker() {
+  if (dwellStartTime > 0) {
+    accumulatedDwellMs += (Date.now() - dwellStartTime);
+    dwellStartTime = 0;
+  }
+  clearTimeout(dwellTimer);
+}
+
+function resumeDwellTracker() {
+  const currentPost = allPosts[currentIndex];
+  if (!currentPost) return;
+  const postId = currentPost.id;
+  if (postImpressionLogged[postId]) return;
+
+  if (document.visibilityState === 'visible' && dwellStartTime === 0) {
+    dwellStartTime = Date.now();
+    clearTimeout(dwellTimer);
+    const remainingMs = Math.max(150, DWELL_THRESHOLD_MS - accumulatedDwellMs);
+    dwellTimer = setTimeout(() => {
+      onDwellThresholdReached(postId);
+    }, remainingMs);
+  }
+}
+
+function onDwellThresholdReached(postId) {
+  if (postImpressionLogged[postId]) return;
+  postImpressionLogged[postId] = true;
+
+  const cacheBuster = Date.now();
+  const topImg = document.querySelector('.visitor-counter-img');
+  const footerImg = document.querySelector('.footer-visitor-badge');
+
+  const baseEndpoint = 'https://hits.sh/virendrakulkarni-design.github.io/genai-architecture-hub-impressions.svg?label=Impressions&color=10b981';
+  const liveUrl = `${baseEndpoint}&_t=${cacheBuster}`;
+
+  if (topImg) {
+    topImg.onload = () => {
+      const dwellStatus = document.querySelector('.visitor-status-dwell');
+      if (dwellStatus) dwellStatus.style.display = 'none';
+      topImg.style.display = 'inline-block';
+    };
+    topImg.src = liveUrl;
+  }
+
+  if (footerImg) {
+    const footerStatus = document.querySelector('.footer-status-dwell');
+    if (footerStatus) footerStatus.style.display = 'none';
+    footerImg.style.display = 'inline-block';
+    footerImg.src = liveUrl;
+  }
+
+  // Visual feedback: Verified pulse animation
+  const pulseDot = document.querySelector('.visitor-pulse-dot');
+  if (pulseDot) {
+    pulseDot.classList.add('verified');
+    setTimeout(() => pulseDot.classList.remove('verified'), 1200);
+  }
+
+  const badge = document.querySelector('.visitor-tracker-badge');
+  if (badge) {
+    badge.title = 'Verified Impression: Active reading dwell time exceeded 3.5s (LinkedIn impression model)';
+  }
+
+  try {
+    const totalKey = 'genai_hub_total_impressions';
+    let total = parseInt(localStorage.getItem(totalKey) || '0', 10) + 1;
+    localStorage.setItem(totalKey, total.toString());
+  } catch (e) {}
 }
