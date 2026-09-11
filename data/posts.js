@@ -239,5 +239,40 @@ window.POSTS_DATA = [
       ],
       "badge": "Hybrid Search + Reranking is the single highest-ROI upgrade in any enterprise RAG pipeline."
     }
+  },
+  {
+    "id": "post-8",
+    "topic": "FlashAttention & PagedAttention in vLLM",
+    "level": "LEVEL 8: GPU MEMORY MANAGEMENT",
+    "levelClass": "level-4",
+    "readTime": "10 min read",
+    "audience": "Distributed Systems & GPU Infrastructure Architects",
+    "title": "PagedAttention & FlashAttention: How Virtual Memory Paging Conquered the KV-Cache",
+    "lead": "Before vLLM (2023), GPU memory fragmentation wasted up to 80% of VRAM, limiting batch sizes and causing out-of-memory errors on concurrent traffic. Here is how operating system virtual memory solved the LLM serving crisis.",
+    "stats": {
+      "type": "warning",
+      "title": "The Memory Fragmentation Crisis in LLM Serving:",
+      "items": [
+        "Traditional serving engines pre-allocated contiguous memory blocks for the maximum context window (e.g. 8k tokens), wasting <strong>60%–80% of GPU memory</strong> on short prompts.",
+        "PagedAttention eliminates external memory fragmentation entirely, boosting concurrent serving throughput by <strong>2x to 4x</strong> on identical GPU hardware."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: OS Virtual Memory Pages for KV Cache",
+      "text": "In 1960, operating systems stopped allocating contiguous physical RAM for programs; they introduced Virtual Memory Pages and page tables.<br><br><strong>PagedAttention brings virtual memory paging to GPUs:</strong> The KV-cache for a request is broken into small 16-token blocks stored in non-contiguous GPU memory pages. As new tokens generate, new blocks are dynamically mapped on the fly."
+    },
+    "diagram": "graph LR\n    subgraph Logical [\"Logical KV Cache\"]\n        L1[\"Tokens 0-15 (Block 0)\"]\n        L2[\"Tokens 16-31 (Block 1)\"]\n        L3[\"Tokens 32-47 (Block 2)\"]\n    end\n    subgraph Table [\"Block Table (Page Table)\"]\n        T0[\"Block 0 -> Physical Page #12\"]\n        T1[\"Block 1 -> Physical Page #4\"]\n        T2[\"Block 2 -> Physical Page #98\"]\n    end\n    subgraph Physical [\"Physical GPU VRAM Pages\"]\n        P4[\"Page 4 (Non-contiguous)\"]\n        P12[\"Page 12\"]\n        P98[\"Page 98\"]\n    end\n    Logical --> Table --> Physical\n    style Table fill:#1e3a8a,stroke:#60a5fa,color:#fff",
+    "diagramCaption": "Figure 8: PagedAttention Block Table Mapping to Physical GPU Memory",
+    "codeTitle": "vllm_paged_attention_config.py",
+    "codeContent": "from vllm import LLM, SamplingParams\n\n# Configure block size and GPU memory utilization\nllm = LLM(\n    model=\"meta-llama/Meta-Llama-3-8B-Instruct\",\n    block_size=16, # Size of each PagedAttention block in tokens\n    gpu_memory_utilization=0.90,\n    max_model_len=8192\n)\n\nprompts = [\"Explain Paxos consensus\", \"Write a quicksort in Rust\"]\nsampling_params = SamplingParams(temperature=0.7, max_tokens=512)\noutputs = llm.generate(prompts, sampling_params)",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "Memory fragmentation, not raw compute, is the enemy of high-concurrency LLM deployments.",
+        "PagedAttention allows multiple requests to share common prompt prefixes (e.g. system prompts) with zero copy.",
+        "FlashAttention optimizes GPU SRAM vs HBM memory transfers to compute attention in O(N) IO complexity."
+      ],
+      "badge": "PagedAttention is the foundational breakthrough behind modern enterprise LLM inference engines."
+    }
   }
 ];
