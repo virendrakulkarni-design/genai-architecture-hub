@@ -204,5 +204,40 @@ window.POSTS_DATA = [
       ],
       "badge": "Speculative decoding breaks memory bandwidth bottlenecks without modifying weights."
     }
+  },
+  {
+    "id": "post-7",
+    "topic": "Hybrid Search: Dense Vectors vs Sparse BM25",
+    "level": "LEVEL 7: ENTERPRISE INFORMATION RETRIEVAL",
+    "levelClass": "level-3",
+    "readTime": "8 min read",
+    "audience": "Search, RAG & Data Architects",
+    "title": "Why Pure Vector Search Fails: Architecting Hybrid Retrieval with Reciprocal Rank Fusion",
+    "lead": "Vector embeddings capture high-level semantic meaning, but fail miserably at exact keyword matching (SKUs, error codes, part numbers, customer IDs). Here is why every production RAG architecture requires Hybrid Search.",
+    "stats": {
+      "type": "danger",
+      "title": "The Vector Search Semantic Blindspot:",
+      "items": [
+        "Pure dense vector search retrieval fails up to <strong>43% of the time on exact alphanumeric lookups</strong> (e.g. searching for error code 'ERR_AUTH_0921').",
+        "Hybrid Search combining Dense Embeddings + BM25 with Reciprocal Rank Fusion (RRF) increases Mean Reciprocal Rank (MRR@10) from <strong>0.61 to 0.89</strong>."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Concept Match vs. Phone Book Lookup",
+      "text": "• <strong>Vector Search:</strong> Finds concepts that feel similar. If you search 'heart attack', it finds 'myocardial infarction'.<br>• <strong>BM25 Keyword Search:</strong> Finds exact strings. If you search for invoice '#INV-88392-X', it finds that exact invoice, whereas vector embeddings might return '#INV-11029-A' because all invoice numbers have identical embedding vectors!<br><br><strong>Hybrid Search fuses both:</strong> It searches both indices and combines ranks using Reciprocal Rank Fusion."
+    },
+    "diagram": "graph TD\n    Query[\"User Query: 'Replace error 404 in react router v6'\"] --> V[\"Dense Vector Index<br/>(Cosine Similarity)\"]\n    Query --> B[\"Sparse Lexical Index<br/>(BM25 / Elasticsearch)\"]\n    V --> R1[\"Top 20 Semantic Candidates\"]\n    B --> R2[\"Top 20 Keyword Matches\"]\n    R1 & R2 --> RRF[\"Reciprocal Rank Fusion (RRF)<br/>Score = SUM( 1 / (60 + rank) )\"]\n    RRF --> Top[\"Top 5 Unified Context Chunks\"]\n    style RRF fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Top fill:#065f46,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure 7: Hybrid Search Architecture with Reciprocal Rank Fusion",
+    "codeTitle": "reciprocal_rank_fusion.py",
+    "codeContent": "def reciprocal_rank_fusion(dense_ranks, sparse_ranks, k=60):\n    rrf_scores = {}\n    for rank, doc_id in enumerate(dense_ranks):\n        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)\n    for rank, doc_id in enumerate(sparse_ranks):\n        rrf_scores[doc_id] = rrf_scores.get(doc_id, 0.0) + 1.0 / (k + rank + 1)\n    # Sort by descending fused score\n    return sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)",
+    "takeaway": {
+      "title": "🎁 Architect’s \"Monday Morning\" Takeaway",
+      "items": [
+        "Never deploy pure vector search for enterprise documentation with product codes, IDs, or technical acronyms.",
+        "Combine BM25 (Elasticsearch/OpenSearch) with Dense Embeddings (pgvector/Pinecone/Qdrant).",
+        "Re-rank top hybrid candidates using a Cross-Encoder (Cohere Rerank or BGE-Reranker)."
+      ],
+      "badge": "Hybrid Search + Reranking is the single highest-ROI upgrade in any enterprise RAG pipeline."
+    }
   }
 ];
