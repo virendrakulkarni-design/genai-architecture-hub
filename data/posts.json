@@ -425,5 +425,41 @@
       "badge": "Dynamic compute routing transforms fixed Transformer depth into an adaptive, token-dependent computational graph."
     },
     "publishedAt": "2026-11-11 05:02 UTC"
+  },
+  {
+    "id": "post-13",
+    "topic": "Multi-Head Latent Attention (MLA): Compressing the KV-Cache in DeepSeek V3 and R1",
+    "level": "LEVEL 12: ATTENTION CACHE COMPRESSION",
+    "levelClass": "level-4",
+    "readTime": "9 min read",
+    "audience": "Systems Architects & Inference Optimization Engineers",
+    "title": "Multi-Head Latent Attention: How DeepSeek V3 Shrinks the KV-Cache Bottleneck",
+    "lead": "Serving 128k context windows on standard Multi-Head Attention (MHA) consumes hundreds of gigabytes of GPU VRAM strictly for the KV cache. Multi-Head Latent Attention (MLA) projects Key-Value matrices into a low-rank compressed latent space, reducing cache memory by over 90% while preserving multi-head expressive power.",
+    "stats": {
+      "type": "info",
+      "title": "KV-Cache Memory Footprint per Token (671B Model, 128k Context):",
+      "items": [
+        "Standard Multi-Head Attention (MHA) requires 1,024 bytes per token for Key-Value activations.",
+        "Multi-Head Latent Attention (MLA) reduces KV cache footprint down to 70 bytes per token, achieving a 93.3% memory reduction over MHA and 75% over Grouped-Query Attention (GQA)."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Compressed MP3 Codecs vs. Uncompressed Audio Stems",
+      "text": "Staging uncompressed Multi-Head KV activations in VRAM is like storing raw 32-bit floating point audio tracks for every single choir member on physical high-speed registers. Most of that spectral information is redundant.<br><br><strong>MLA compresses the entire chorus into a single low-rank latent vector:</strong> The model writes only the compressed latent packet to VRAM, then quickly decompresses the multi-head projection inside high-speed SRAM registers during attention calculation."
+    },
+    "diagram": "graph TD\n    Input[\"Hidden Activation h_t\"] --> Down[\"Down-Projection: W_DKV (Dimension d_c << d_h)\"]\n    Down --> Latent[\"Compressed Latent Cache c_t (Stored in VRAM)\"]\n    Latent --> UpK[\"Decompress Keys: W_UK\"]\n    Latent --> UpV[\"Decompress Values: W_UV\"]\n    Input --> RoPE[\"Decoupled RoPE Key: k_t_pe\"]\n    UpK --> Concat[\"Combine Decompressed Keys + RoPE Key\"]\n    Concat --> Attn[\"Scaled Dot-Product Attention Engine\"]\n    UpV --> Attn\n    style Latent fill:#065f46,stroke:#10b981,color:#fff\n    style Down fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Attn fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 12: Low-Rank Latent Compression and Decoupled RoPE in Multi-Head Latent Attention",
+    "codeTitle": "multi_head_latent_attention.py",
+    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MultiHeadLatentAttention(nn.Module):\n    def __init__(self, d_model: int, n_heads: int, d_head: int, d_latent: int):\n        super().__init__()\n        self.n_heads = n_heads\n        self.d_head = d_head\n        # Low-rank KV compression projection\n        self.w_dkv = nn.Linear(d_model, d_latent, bias=False)\n        # Up-projection decompression matrices\n        self.w_uk = nn.Linear(d_latent, n_heads * d_head, bias=False)\n        self.w_uv = nn.Linear(d_latent, n_heads * d_head, bias=False)\n\n    def forward_cache_step(self, hidden_state: torch.Tensor):\n        # Compress KV to latent representation: shape [batch, 1, d_latent]\n        c_kv = self.w_dkv(hidden_state)\n        # Only c_kv is stored in GPU KV-Cache VRAM!\n        return c_kv\n\n    def compute_attention(self, q: torch.Tensor, c_kv_cache: torch.Tensor):\n        # Decompress directly during matrix multiplication\n        k = self.w_uk(c_kv_cache).view(q.shape[0], -1, self.n_heads, self.d_head)\n        v = self.w_uv(c_kv_cache).view(q.shape[0], -1, self.n_heads, self.d_head)\n        return k, v",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Standard GQA reduces key/value heads at the cost of representational fidelity on complex reasoning tasks.",
+        "MLA stores low-rank latent representations in VRAM, decompressing heads on-chip without increasing memory bandwidth bottlenecks.",
+        "Decoupled RoPE separates rotary positional encodings from the content latent space, preserving relative position awareness."
+      ],
+      "badge": "Low-rank latent projection frees frontier models from the memory wall of massive context windows."
+    },
+    "publishedAt": "2026-11-11 12:19 UTC"
   }
 ]
