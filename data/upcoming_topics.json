@@ -1,40 +1,5 @@
 [
   {
-    "id": "topic-1",
-    "topic": "Mixture of Depths (MoD): Dynamic Compute Routing Across Transformer Layers",
-    "level": "LEVEL 11: DYNAMIC COMPUTE ROUTING",
-    "levelClass": "level-4",
-    "readTime": "8 min read",
-    "audience": "Systems Architects & Distributed Infrastructure Engineers",
-    "title": "Mixture of Depths: Dynamic Compute Routing Across Transformer Layers",
-    "lead": "Standard Transformers force every token through every feedforward and self-attention block regardless of difficulty. Mixture of Depths (MoD) dynamically routes trivial tokens around computational blocks via residual bypasses, cutting FLOP consumption by 50% without quality degradation.",
-    "stats": {
-      "type": "success",
-      "title": "Dynamic Compute Scaling Metrics:",
-      "items": [
-        "MoD achieves parity with standard dense Transformer baselines using up to 50% fewer FLOPs per token during forward passes.",
-        "Fixed capacity routing bounds tensor dimensions, preventing GPU memory fragmentation and maintaining deterministic step latency."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: Express Toll Lanes vs. Local Roads",
-      "text": "Every vehicle does not need to navigate crowded downtown streets. Commuters traveling long distances take the high-speed elevated bypass, while vehicles making specific deliveries take local roads.<br><br><strong>Mixture of Depths is an express lane for easy tokens:</strong> Simple prepositions and punctuation cruise through residual connections, preserving deep matrix multiplications for information-dense nouns, verbs, and logical operators."
-    },
-    "diagram": "graph TD\n    In[\"Token Stream x_t\"] --> Router[\"Router Gate: Top-K Capacity Predictor\"]\n    Router --> Cond{\"Selected by Top-K?\"}\n    Cond -- YES --> Block[\"Execute Transformer Block (Attention + MLP)\"]\n    Cond -- NO --> Skip[\"Residual Bypass (Identity Shortcut)\"]\n    Block --> Merge[\"Add Residual &amp; Normalize\"]\n    Skip --> Merge\n    Merge --> Out[\"Next Layer Representation\"]\n    style Block fill:#065f46,stroke:#10b981,color:#fff\n    style Skip fill:#1e293b,stroke:#64748b,color:#fff\n    style Router fill:#1e3a8a,stroke:#60a5fa,color:#fff",
-    "diagramCaption": "Figure 11: Dynamic Token Routing and Residual Bypass in Mixture of Depths",
-    "codeTitle": "mixture_of_depths_router.py",
-    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MixtureOfDepthsRouter(nn.Module):\n    def __init__(self, d_model: int, capacity_factor: float = 0.5):\n        super().__init__()\n        self.weight = nn.Linear(d_model, 1, bias=False)\n        self.capacity_factor = capacity_factor\n\n    def forward(self, x: torch.Tensor, block_fn):\n        # x shape: [batch_size, seq_len, d_model]\n        b, s, d = x.shape\n        k = int(s * self.capacity_factor)\n        router_logits = self.weight(x).squeeze(-1) # [b, s]\n        topk_weights, topk_indices = torch.topk(router_logits, k, dim=-1)\n        \n        # Gather selected tokens for execution\n        selected_tokens = torch.gather(x, 1, topk_indices.unsqueeze(-1).expand(-1, -1, d))\n        processed = block_fn(selected_tokens) * torch.sigmoid(topk_weights).unsqueeze(-1)\n        \n        # Scatter back to residual stream\n        out = x.clone()\n        out.scatter_add_(1, topk_indices.unsqueeze(-1).expand(-1, -1, d), processed)\n        return out",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Static compute allocations over-spend FLOPs on low-entropy tokens like whitespace, commas, and repetitive syntax.",
-        "Capacity factors enforce strict tensor dimensions, avoiding ragged memory allocations on tensor cores.",
-        "Combining Mixture of Depths with Mixture of Experts (MoD + MoE) yields compound efficiency gains across both depth and width."
-      ],
-      "badge": "Dynamic compute routing transforms fixed Transformer depth into an adaptive, token-dependent computational graph."
-    }
-  },
-  {
     "id": "topic-2",
     "topic": "Multi-Head Latent Attention (MLA): Compressing the KV-Cache in DeepSeek V3 and R1",
     "level": "LEVEL 12: ATTENTION CACHE COMPRESSION",
