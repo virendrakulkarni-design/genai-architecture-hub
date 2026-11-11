@@ -461,5 +461,41 @@
       "badge": "Low-rank latent projection frees frontier models from the memory wall of massive context windows."
     },
     "publishedAt": "2026-11-11 12:19 UTC"
+  },
+  {
+    "id": "post-14",
+    "topic": "Continuous Batching & Chunked Prefill: Eliminating the GPU Bubble in LLM Serving Engines",
+    "level": "LEVEL 13: HIGH-THROUGHPUT INFERENCE ENGINES",
+    "levelClass": "level-3",
+    "readTime": "9 min read",
+    "audience": "ML Platform Engineers & High-Throughput Inference Architects",
+    "title": "Continuous Batching and Chunked Prefill: Maximizing Tensor Core Saturation",
+    "lead": "Static request batching creates massive GPU compute bubbles while waiting for the slowest token generator to terminate. By transitioning to iteration-level continuous batching and chunked prefill, production inference engines saturate GPU tensor cores and smooth time-to-first-token variance by 4.2x.",
+    "stats": {
+      "type": "warning",
+      "title": "Inference Fleet Utilization & Latency Variance:",
+      "items": [
+        "Static batching leaves tensor cores idling for up to 65% of execution time due to early-finishing request bubbles.",
+        "Chunked prefill bounds single-step prefill size to 512 tokens, eliminating decode starvation and reducing P99 latency spikes by 76%."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Rotating Airport Baggage Carousel vs. A Tour Bus",
+      "text": "In a tour bus, all 40 passengers must wait on board until the final passenger boards before the vehicle departs; when one passenger leaves, everyone else sits stalled.<br><br><strong>Continuous batching is a baggage carousel:</strong> Pieces of luggage (tokens) smoothly drop onto the conveyor belt and leave the carousel the exact moment they finish, keeping the belt moving at maximum linear capacity 100% of the time."
+    },
+    "diagram": "graph TD\n    Req[\"Incoming Stream of Heterogeneous Prompts\"] --> Scheduler[\"Iteration-Level Engine Scheduler\"]\n    Scheduler --> Slices[\"Split Long Prefill into Fixed 512-Token Chunks\"]\n    Slices --> Mixed[\"Co-Batch Prefill Chunks with Active Decode Tokens\"]\n    Mixed --> GPU[\"Tensor Core Execution Step (High FLOP Utilization)\"]\n    GPU --> Check{\"Request Finished EOS?\"}\n    Check -- YES --> Evict[\"Egress Response &amp; Free KV Pages\"]\n    Check -- NO --> Requeue[\"Cycle Back into Next Iteration Batch\"]\n    style Scheduler fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Mixed fill:#065f46,stroke:#10b981,color:#fff\n    style GPU fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 13: Iteration-Level Continuous Scheduling and Chunked Prefill Interleaving",
+    "codeTitle": "continuous_batch_scheduler.py",
+    "codeContent": "class IterationLevelScheduler:\n    def __init__(self, max_batch_tokens: int = 2048, chunk_size: int = 512):\n        self.max_batch_tokens = max_batch_tokens\n        self.chunk_size = chunk_size\n        self.prefill_queue = []\n        self.decode_pool = []\n\n    def schedule_next_iteration(self):\n        current_batch = []\n        allocated_tokens = 0\n        \n        # 1. Prioritize active decodes (1 token per active sequence)\n        for req in self.decode_pool:\n            current_batch.append((req, 1, \"decode\"))\n            allocated_tokens += 1\n            \n        # 2. Fill remaining budget with chunked prefill slices\n        budget_left = self.max_batch_tokens - allocated_tokens\n        for req in list(self.prefill_queue):\n            if budget_left <= 0:\n                break\n            tokens_to_take = min(req.remaining_prefill, self.chunk_size, budget_left)\n            current_batch.append((req, tokens_to_take, \"prefill_chunk\"))\n            req.remaining_prefill -= tokens_to_take\n            budget_left -= tokens_to_take\n            if req.remaining_prefill == 0:\n                self.prefill_queue.remove(req)\n                self.decode_pool.append(req)\n                \n        return current_batch",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Static batching is unviable for production LLM serving due to variable generation length disparities.",
+        "Chunked prefill prevents long 32k prompt ingestion from blocking real-time token generation for existing users.",
+        "Combining iteration scheduling with paged virtual memory enables 3x higher serving density on identical hardware."
+      ],
+      "badge": "Iteration-level execution transforms bursty prompt arrivals into continuous, predictable GPU saturation."
+    },
+    "publishedAt": "2026-11-11 19:43 UTC"
   }
 ]

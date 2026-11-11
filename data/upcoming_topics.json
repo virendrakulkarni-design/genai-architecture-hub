@@ -1,40 +1,5 @@
 [
   {
-    "id": "topic-3",
-    "topic": "Continuous Batching & Chunked Prefill: Eliminating the GPU Bubble in LLM Serving Engines",
-    "level": "LEVEL 13: HIGH-THROUGHPUT INFERENCE ENGINES",
-    "levelClass": "level-3",
-    "readTime": "9 min read",
-    "audience": "ML Platform Engineers & High-Throughput Inference Architects",
-    "title": "Continuous Batching and Chunked Prefill: Maximizing Tensor Core Saturation",
-    "lead": "Static request batching creates massive GPU compute bubbles while waiting for the slowest token generator to terminate. By transitioning to iteration-level continuous batching and chunked prefill, production inference engines saturate GPU tensor cores and smooth time-to-first-token variance by 4.2x.",
-    "stats": {
-      "type": "warning",
-      "title": "Inference Fleet Utilization & Latency Variance:",
-      "items": [
-        "Static batching leaves tensor cores idling for up to 65% of execution time due to early-finishing request bubbles.",
-        "Chunked prefill bounds single-step prefill size to 512 tokens, eliminating decode starvation and reducing P99 latency spikes by 76%."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: The Rotating Airport Baggage Carousel vs. A Tour Bus",
-      "text": "In a tour bus, all 40 passengers must wait on board until the final passenger boards before the vehicle departs; when one passenger leaves, everyone else sits stalled.<br><br><strong>Continuous batching is a baggage carousel:</strong> Pieces of luggage (tokens) smoothly drop onto the conveyor belt and leave the carousel the exact moment they finish, keeping the belt moving at maximum linear capacity 100% of the time."
-    },
-    "diagram": "graph TD\n    Req[\"Incoming Stream of Heterogeneous Prompts\"] --> Scheduler[\"Iteration-Level Engine Scheduler\"]\n    Scheduler --> Slices[\"Split Long Prefill into Fixed 512-Token Chunks\"]\n    Slices --> Mixed[\"Co-Batch Prefill Chunks with Active Decode Tokens\"]\n    Mixed --> GPU[\"Tensor Core Execution Step (High FLOP Utilization)\"]\n    GPU --> Check{\"Request Finished EOS?\"}\n    Check -- YES --> Evict[\"Egress Response &amp; Free KV Pages\"]\n    Check -- NO --> Requeue[\"Cycle Back into Next Iteration Batch\"]\n    style Scheduler fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Mixed fill:#065f46,stroke:#10b981,color:#fff\n    style GPU fill:#1e293b,stroke:#64748b,color:#fff",
-    "diagramCaption": "Figure 13: Iteration-Level Continuous Scheduling and Chunked Prefill Interleaving",
-    "codeTitle": "continuous_batch_scheduler.py",
-    "codeContent": "class IterationLevelScheduler:\n    def __init__(self, max_batch_tokens: int = 2048, chunk_size: int = 512):\n        self.max_batch_tokens = max_batch_tokens\n        self.chunk_size = chunk_size\n        self.prefill_queue = []\n        self.decode_pool = []\n\n    def schedule_next_iteration(self):\n        current_batch = []\n        allocated_tokens = 0\n        \n        # 1. Prioritize active decodes (1 token per active sequence)\n        for req in self.decode_pool:\n            current_batch.append((req, 1, \"decode\"))\n            allocated_tokens += 1\n            \n        # 2. Fill remaining budget with chunked prefill slices\n        budget_left = self.max_batch_tokens - allocated_tokens\n        for req in list(self.prefill_queue):\n            if budget_left <= 0:\n                break\n            tokens_to_take = min(req.remaining_prefill, self.chunk_size, budget_left)\n            current_batch.append((req, tokens_to_take, \"prefill_chunk\"))\n            req.remaining_prefill -= tokens_to_take\n            budget_left -= tokens_to_take\n            if req.remaining_prefill == 0:\n                self.prefill_queue.remove(req)\n                self.decode_pool.append(req)\n                \n        return current_batch",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Static batching is unviable for production LLM serving due to variable generation length disparities.",
-        "Chunked prefill prevents long 32k prompt ingestion from blocking real-time token generation for existing users.",
-        "Combining iteration scheduling with paged virtual memory enables 3x higher serving density on identical hardware."
-      ],
-      "badge": "Iteration-level execution transforms bursty prompt arrivals into continuous, predictable GPU saturation."
-    }
-  },
-  {
     "id": "topic-4",
     "topic": "Long-Context KV-Cache Compression: StreamingLLM, SnapKV, and Heavy Hitter Eviction",
     "level": "LEVEL 14: BOUNDED MEMORY INFERENCE",
@@ -136,6 +101,40 @@
         "Map-reduce hierarchical querying produces predictable token utilization across millions of records."
       ],
       "badge": "GraphRAG turns unstructured text corpora into observable, navigable knowledge graphs."
+    }
+  },
+  {
+    "topic": "Direct Preference Optimization (DPO) vs. Kahneman-Tversky Optimization (KTO): Reference-Free Alignment",
+    "level": "LEVEL 17: MODERN POST-TRAINING ALIGNMENT",
+    "levelClass": "level-3",
+    "readTime": "8 min read",
+    "audience": "Post-Training Research Engineers & Alignment Specialists",
+    "title": "DPO vs. KTO: Aligning Frontier LLMs with Asymmetric Loss Functions",
+    "lead": "Reinforcement Learning from Human Feedback (RLHF) required separate reward models and unstable PPO training. While Direct Preference Optimization (DPO) eliminated the reward model using pairwise comparisons, Kahneman-Tversky Optimization (KTO) directly aligns on unpaired binary signal via human loss aversion theory.",
+    "stats": {
+      "type": "info",
+      "title": "Alignment Data Efficiency & Training Stability:",
+      "items": [
+        "KTO matches DPO performance using completely unpaired binary feedback (thumbs up / thumbs down), cutting data curation overhead in half.",
+        "Eliminating the separate reward model actor-critic loop saves 3x GPU memory during post-training fine-tuning runs."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Side-by-Side Taste Tests vs. Customer Receipt Tips",
+      "text": "DPO requires bringing a patron two plates simultaneously and asking: 'Which plate tastes better?' This forces expensive pairwise annotations.<br><br><strong>KTO models human behavioral economics directly:</strong> Drawing from Daniel Kahneman's Prospect Theory, humans value avoiding a loss more than gaining an equivalent win. A thumbs-down receives a steeper loss penalty than a thumbs-up reward."
+    },
+    "diagram": "graph LR\n    Input[\"Prompt x + Model Output y\"] --> KTO{\"Signal Type?\"}\n    KTO -- \"Desirable (y in Y_D)\" --> Pos[\"Reward Utility: log(sigma(beta * delta_logP))\"]\n    KTO -- \"Undesirable (y in Y_U)\" --> Neg[\"Loss Aversion: lambda * log(sigma(beta * -delta_logP))\"]\n    Pos --> Loss[\"Total KTO Objective\"]\n    Neg --> Loss\n    Loss --> Backprop[\"Direct Model Weight Gradient Update\"]\n    style Pos fill:#065f46,stroke:#10b981,color:#fff\n    style Neg fill:#7f1d1d,stroke:#f87171,color:#fff",
+    "diagramCaption": "Figure: Asymmetric Prospect Theory Value Function in KTO Alignment",
+    "codeTitle": "kto_loss_objective.py",
+    "codeContent": "import torch\nimport torch.nn.functional as F\n\ndef kto_loss(policy_logps, ref_logps, labels, beta=0.1, lambda_loss=1.33):\n    # labels: 1 for desirable (thumbs-up), 0 for undesirable (thumbs-down)\n    delta = policy_logps - ref_logps\n    # Implicit reward calculation\n    r = beta * delta\n    \n    # Asymmetric prospect theory losses\n    pos_loss = 1.0 - torch.sigmoid(r)\n    neg_loss = 1.0 - torch.sigmoid(-r)\n    \n    loss = torch.where(labels == 1, pos_loss, lambda_loss * neg_loss)\n    return loss.mean()",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Pairwise preference data collection is the primary cost bottleneck in enterprise model alignment.",
+        "Prospect Theory loss weighting mathematically penalizes toxic outputs more aggressively than it rewards helpfulness.",
+        "Direct alignment eliminates complex hyperparameter tuning of PPO KL-divergence penalties."
+      ],
+      "badge": "Binary alignment loss functions turn live user feedback into immediate post-training signals."
     }
   }
 ]
