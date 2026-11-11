@@ -1,1 +1,177 @@
-[]
+[
+  {
+    "id": "topic-1",
+    "topic": "Mixture of Depths (MoD): Dynamic Compute Routing Across Transformer Layers",
+    "level": "LEVEL 11: DYNAMIC COMPUTE ROUTING",
+    "levelClass": "level-4",
+    "readTime": "8 min read",
+    "audience": "Systems Architects & Distributed Infrastructure Engineers",
+    "title": "Mixture of Depths: Dynamic Compute Routing Across Transformer Layers",
+    "lead": "Standard Transformers force every token through every feedforward and self-attention block regardless of difficulty. Mixture of Depths (MoD) dynamically routes trivial tokens around computational blocks via residual bypasses, cutting FLOP consumption by 50% without quality degradation.",
+    "stats": {
+      "type": "success",
+      "title": "Dynamic Compute Scaling Metrics:",
+      "items": [
+        "MoD achieves parity with standard dense Transformer baselines using up to 50% fewer FLOPs per token during forward passes.",
+        "Fixed capacity routing bounds tensor dimensions, preventing GPU memory fragmentation and maintaining deterministic step latency."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Express Toll Lanes vs. Local Roads",
+      "text": "Every vehicle does not need to navigate crowded downtown streets. Commuters traveling long distances take the high-speed elevated bypass, while vehicles making specific deliveries take local roads.<br><br><strong>Mixture of Depths is an express lane for easy tokens:</strong> Simple prepositions and punctuation cruise through residual connections, preserving deep matrix multiplications for information-dense nouns, verbs, and logical operators."
+    },
+    "diagram": "graph TD\n    In[\"Token Stream x_t\"] --> Router[\"Router Gate: Top-K Capacity Predictor\"]\n    Router --> Cond{\"Selected by Top-K?\"}\n    Cond -- YES --> Block[\"Execute Transformer Block (Attention + MLP)\"]\n    Cond -- NO --> Skip[\"Residual Bypass (Identity Shortcut)\"]\n    Block --> Merge[\"Add Residual &amp; Normalize\"]\n    Skip --> Merge\n    Merge --> Out[\"Next Layer Representation\"]\n    style Block fill:#065f46,stroke:#10b981,color:#fff\n    style Skip fill:#1e293b,stroke:#64748b,color:#fff\n    style Router fill:#1e3a8a,stroke:#60a5fa,color:#fff",
+    "diagramCaption": "Figure 11: Dynamic Token Routing and Residual Bypass in Mixture of Depths",
+    "codeTitle": "mixture_of_depths_router.py",
+    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MixtureOfDepthsRouter(nn.Module):\n    def __init__(self, d_model: int, capacity_factor: float = 0.5):\n        super().__init__()\n        self.weight = nn.Linear(d_model, 1, bias=False)\n        self.capacity_factor = capacity_factor\n\n    def forward(self, x: torch.Tensor, block_fn):\n        # x shape: [batch_size, seq_len, d_model]\n        b, s, d = x.shape\n        k = int(s * self.capacity_factor)\n        router_logits = self.weight(x).squeeze(-1) # [b, s]\n        topk_weights, topk_indices = torch.topk(router_logits, k, dim=-1)\n        \n        # Gather selected tokens for execution\n        selected_tokens = torch.gather(x, 1, topk_indices.unsqueeze(-1).expand(-1, -1, d))\n        processed = block_fn(selected_tokens) * torch.sigmoid(topk_weights).unsqueeze(-1)\n        \n        # Scatter back to residual stream\n        out = x.clone()\n        out.scatter_add_(1, topk_indices.unsqueeze(-1).expand(-1, -1, d), processed)\n        return out",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Static compute allocations over-spend FLOPs on low-entropy tokens like whitespace, commas, and repetitive syntax.",
+        "Capacity factors enforce strict tensor dimensions, avoiding ragged memory allocations on tensor cores.",
+        "Combining Mixture of Depths with Mixture of Experts (MoD + MoE) yields compound efficiency gains across both depth and width."
+      ],
+      "badge": "Dynamic compute routing transforms fixed Transformer depth into an adaptive, token-dependent computational graph."
+    }
+  },
+  {
+    "id": "topic-2",
+    "topic": "Multi-Head Latent Attention (MLA): Compressing the KV-Cache in DeepSeek V3 and R1",
+    "level": "LEVEL 12: ATTENTION CACHE COMPRESSION",
+    "levelClass": "level-4",
+    "readTime": "9 min read",
+    "audience": "Systems Architects & Inference Optimization Engineers",
+    "title": "Multi-Head Latent Attention: How DeepSeek V3 Shrinks the KV-Cache Bottleneck",
+    "lead": "Serving 128k context windows on standard Multi-Head Attention (MHA) consumes hundreds of gigabytes of GPU VRAM strictly for the KV cache. Multi-Head Latent Attention (MLA) projects Key-Value matrices into a low-rank compressed latent space, reducing cache memory by over 90% while preserving multi-head expressive power.",
+    "stats": {
+      "type": "info",
+      "title": "KV-Cache Memory Footprint per Token (671B Model, 128k Context):",
+      "items": [
+        "Standard Multi-Head Attention (MHA) requires 1,024 bytes per token for Key-Value activations.",
+        "Multi-Head Latent Attention (MLA) reduces KV cache footprint down to 70 bytes per token, achieving a 93.3% memory reduction over MHA and 75% over Grouped-Query Attention (GQA)."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Compressed MP3 Codecs vs. Uncompressed Audio Stems",
+      "text": "Staging uncompressed Multi-Head KV activations in VRAM is like storing raw 32-bit floating point audio tracks for every single choir member on physical high-speed registers. Most of that spectral information is redundant.<br><br><strong>MLA compresses the entire chorus into a single low-rank latent vector:</strong> The model writes only the compressed latent packet to VRAM, then quickly decompresses the multi-head projection inside high-speed SRAM registers during attention calculation."
+    },
+    "diagram": "graph TD\n    Input[\"Hidden Activation h_t\"] --> Down[\"Down-Projection: W_DKV (Dimension d_c << d_h)\"]\n    Down --> Latent[\"Compressed Latent Cache c_t (Stored in VRAM)\"]\n    Latent --> UpK[\"Decompress Keys: W_UK\"]\n    Latent --> UpV[\"Decompress Values: W_UV\"]\n    Input --> RoPE[\"Decoupled RoPE Key: k_t_pe\"]\n    UpK --> Concat[\"Combine Decompressed Keys + RoPE Key\"]\n    Concat --> Attn[\"Scaled Dot-Product Attention Engine\"]\n    UpV --> Attn\n    style Latent fill:#065f46,stroke:#10b981,color:#fff\n    style Down fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Attn fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 12: Low-Rank Latent Compression and Decoupled RoPE in Multi-Head Latent Attention",
+    "codeTitle": "multi_head_latent_attention.py",
+    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MultiHeadLatentAttention(nn.Module):\n    def __init__(self, d_model: int, n_heads: int, d_head: int, d_latent: int):\n        super().__init__()\n        self.n_heads = n_heads\n        self.d_head = d_head\n        # Low-rank KV compression projection\n        self.w_dkv = nn.Linear(d_model, d_latent, bias=False)\n        # Up-projection decompression matrices\n        self.w_uk = nn.Linear(d_latent, n_heads * d_head, bias=False)\n        self.w_uv = nn.Linear(d_latent, n_heads * d_head, bias=False)\n\n    def forward_cache_step(self, hidden_state: torch.Tensor):\n        # Compress KV to latent representation: shape [batch, 1, d_latent]\n        c_kv = self.w_dkv(hidden_state)\n        # Only c_kv is stored in GPU KV-Cache VRAM!\n        return c_kv\n\n    def compute_attention(self, q: torch.Tensor, c_kv_cache: torch.Tensor):\n        # Decompress directly during matrix multiplication\n        k = self.w_uk(c_kv_cache).view(q.shape[0], -1, self.n_heads, self.d_head)\n        v = self.w_uv(c_kv_cache).view(q.shape[0], -1, self.n_heads, self.d_head)\n        return k, v",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Standard GQA reduces key/value heads at the cost of representational fidelity on complex reasoning tasks.",
+        "MLA stores low-rank latent representations in VRAM, decompressing heads on-chip without increasing memory bandwidth bottlenecks.",
+        "Decoupled RoPE separates rotary positional encodings from the content latent space, preserving relative position awareness."
+      ],
+      "badge": "Low-rank latent projection frees frontier models from the memory wall of massive context windows."
+    }
+  },
+  {
+    "id": "topic-3",
+    "topic": "Continuous Batching & Chunked Prefill: Eliminating the GPU Bubble in LLM Serving Engines",
+    "level": "LEVEL 13: HIGH-THROUGHPUT INFERENCE ENGINES",
+    "levelClass": "level-3",
+    "readTime": "9 min read",
+    "audience": "ML Platform Engineers & High-Throughput Inference Architects",
+    "title": "Continuous Batching and Chunked Prefill: Maximizing Tensor Core Saturation",
+    "lead": "Static request batching creates massive GPU compute bubbles while waiting for the slowest token generator to terminate. By transitioning to iteration-level continuous batching and chunked prefill, production inference engines saturate GPU tensor cores and smooth time-to-first-token variance by 4.2x.",
+    "stats": {
+      "type": "warning",
+      "title": "Inference Fleet Utilization & Latency Variance:",
+      "items": [
+        "Static batching leaves tensor cores idling for up to 65% of execution time due to early-finishing request bubbles.",
+        "Chunked prefill bounds single-step prefill size to 512 tokens, eliminating decode starvation and reducing P99 latency spikes by 76%."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Rotating Airport Baggage Carousel vs. A Tour Bus",
+      "text": "In a tour bus, all 40 passengers must wait on board until the final passenger boards before the vehicle departs; when one passenger leaves, everyone else sits stalled.<br><br><strong>Continuous batching is a baggage carousel:</strong> Pieces of luggage (tokens) smoothly drop onto the conveyor belt and leave the carousel the exact moment they finish, keeping the belt moving at maximum linear capacity 100% of the time."
+    },
+    "diagram": "graph TD\n    Req[\"Incoming Stream of Heterogeneous Prompts\"] --> Scheduler[\"Iteration-Level Engine Scheduler\"]\n    Scheduler --> Slices[\"Split Long Prefill into Fixed 512-Token Chunks\"]\n    Slices --> Mixed[\"Co-Batch Prefill Chunks with Active Decode Tokens\"]\n    Mixed --> GPU[\"Tensor Core Execution Step (High FLOP Utilization)\"]\n    GPU --> Check{\"Request Finished EOS?\"}\n    Check -- YES --> Evict[\"Egress Response &amp; Free KV Pages\"]\n    Check -- NO --> Requeue[\"Cycle Back into Next Iteration Batch\"]\n    style Scheduler fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Mixed fill:#065f46,stroke:#10b981,color:#fff\n    style GPU fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 13: Iteration-Level Continuous Scheduling and Chunked Prefill Interleaving",
+    "codeTitle": "continuous_batch_scheduler.py",
+    "codeContent": "class IterationLevelScheduler:\n    def __init__(self, max_batch_tokens: int = 2048, chunk_size: int = 512):\n        self.max_batch_tokens = max_batch_tokens\n        self.chunk_size = chunk_size\n        self.prefill_queue = []\n        self.decode_pool = []\n\n    def schedule_next_iteration(self):\n        current_batch = []\n        allocated_tokens = 0\n        \n        # 1. Prioritize active decodes (1 token per active sequence)\n        for req in self.decode_pool:\n            current_batch.append((req, 1, \"decode\"))\n            allocated_tokens += 1\n            \n        # 2. Fill remaining budget with chunked prefill slices\n        budget_left = self.max_batch_tokens - allocated_tokens\n        for req in list(self.prefill_queue):\n            if budget_left <= 0:\n                break\n            tokens_to_take = min(req.remaining_prefill, self.chunk_size, budget_left)\n            current_batch.append((req, tokens_to_take, \"prefill_chunk\"))\n            req.remaining_prefill -= tokens_to_take\n            budget_left -= tokens_to_take\n            if req.remaining_prefill == 0:\n                self.prefill_queue.remove(req)\n                self.decode_pool.append(req)\n                \n        return current_batch",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Static batching is unviable for production LLM serving due to variable generation length disparities.",
+        "Chunked prefill prevents long 32k prompt ingestion from blocking real-time token generation for existing users.",
+        "Combining iteration scheduling with paged virtual memory enables 3x higher serving density on identical hardware."
+      ],
+      "badge": "Iteration-level execution transforms bursty prompt arrivals into continuous, predictable GPU saturation."
+    }
+  },
+  {
+    "id": "topic-4",
+    "topic": "Long-Context KV-Cache Compression: StreamingLLM, SnapKV, and Heavy Hitter Eviction",
+    "level": "LEVEL 14: BOUNDED MEMORY INFERENCE",
+    "levelClass": "level-3",
+    "readTime": "8 min read",
+    "audience": "Systems Engineers & Edge AI Developers",
+    "title": "StreamingLLM and Heavy-Hitter Eviction: Infinite Context with Bounded Memory",
+    "lead": "Deploying conversational agents for multi-day streaming tasks quickly exhausts physical GPU memory. Naively dropping early tokens causes perplexity to explode. By preserving critical initial attention sinks alongside rolling local windows and heavy-hitter tokens, models process millions of tokens in constant memory.",
+    "stats": {
+      "type": "info",
+      "title": "Streaming Inference Benchmarks:",
+      "items": [
+        "Retaining just 4 initial attention sink tokens prevents softmax denominator collapse across 4,000,000+ sequential tokens.",
+        "Heavy Hitter Oracle (H2O) evicts 80% of intermediate KV positions while preserving over 99.2% accuracy on needle-in-a-haystack evaluations."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Architect's Desk Pinboard",
+      "text": "An architect does not keep every intermediate draft paper strewn across their working desk. They keep the permanent project charter pinned at the top-left corner (attention sink), the most recent 10 working drawings in front of them (rolling window), and selectively pin 3 critical structural blueprints in the center (heavy hitters).<br><br><strong>Attention Sinks stabilize the softmax denominator:</strong> Transformers dump unallocated attention probability into the first few tokens. Evicting them ruins attention distributions entirely."
+    },
+    "diagram": "graph LR\n    TokenStream[\"Continuous Streaming Token Stream (t=0 to t=N)\"] --> Sinks[\"Initial Attention Sinks (First 4 Tokens)\"]\n    TokenStream --> Middle[\"Intermediate History Tokens\"]\n    TokenStream --> Rolling[\"Recent Local Window (Last 512 Tokens)\"]\n    Middle --> H2O{\"Accumulated Attention Score >= Threshold?\"}\n    H2O -- YES --> Keep[\"Preserve Heavy Hitter Tokens\"]\n    H2O -- NO --> Evict[\"Evict from KV Cache (Reclaim VRAM)\"]\n    Sinks --> Cache[\"Compact Fixed-Size KV Cache\"]\n    Keep --> Cache\n    Rolling --> Cache\n    style Sinks fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Keep fill:#065f46,stroke:#10b981,color:#fff\n    style Evict fill:#7f1d1d,stroke:#f87171,color:#fff",
+    "diagramCaption": "Figure 14: Attention Sinks and Heavy-Hitter KV Eviction Architecture",
+    "codeTitle": "streaming_attention_cache.py",
+    "codeContent": "import torch\n\nclass StreamingKVCache:\n    def __init__(self, n_sinks: int = 4, window_size: int = 512):\n        self.n_sinks = n_sinks\n        self.window_size = window_size\n        self.k_cache = None\n        self.v_cache = None\n\n    def update(self, new_k: torch.Tensor, new_v: torch.Tensor):\n        if self.k_cache is None:\n            self.k_cache, self.v_cache = new_k, new_v\n            return self.k_cache, self.v_cache\n            \n        self.k_cache = torch.cat([self.k_cache, new_k], dim=-2)\n        self.v_cache = torch.cat([self.v_cache, new_v], dim=-2)\n        \n        seq_len = self.k_cache.shape[-2]\n        if seq_len > self.n_sinks + self.window_size:\n            # Keep initial sinks + recent window, evicting the middle\n            sink_k = self.k_cache[:, :, :self.n_sinks, :]\n            window_k = self.k_cache[:, :, -self.window_size:, :]\n            self.k_cache = torch.cat([sink_k, window_k], dim=-2)\n            \n            sink_v = self.v_cache[:, :, :self.n_sinks, :]\n            window_v = self.v_cache[:, :, -self.window_size:, :]\n            self.v_cache = torch.cat([sink_v, window_v], dim=-2)\n            \n        return self.k_cache, self.v_cache",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Softmax requires tokens to absorb residual attention mass; the first 4 tokens act as universal sinks.",
+        "Pure sliding window attention fails because removing the initial tokens induces catastrophic perplexity surges.",
+        "Combining attention sinks with selective eviction allows infinite streaming conversations with bounded constant RAM."
+      ],
+      "badge": "Attention sinks turn memory-bounded LLM streaming from a hardware impossibility into a solved problem."
+    }
+  },
+  {
+    "id": "topic-5",
+    "topic": "FP8 and Microscaling Formats (MXFP4): Sub-8-Bit Matrix Multiplications on Modern Hardware",
+    "level": "LEVEL 15: HARDWARE-AWARE NUMBER SYSTEMS",
+    "levelClass": "level-4",
+    "readTime": "8 min read",
+    "audience": "Deep Learning Systems Engineers & Hardware Performance Specialists",
+    "title": "FP8 and Microscaling Formats: Unlocking 2x Compute Density on Modern GPUs",
+    "lead": "Scaling large language models beyond 100 billion parameters strains memory bandwidth and arithmetic units. Moving from FP16 to FP8 (E4M3/E5M2) and Open Compute Project Microscaling Formats (MXFP4) doubles tensor core throughput while mitigating catastrophic activation outliers.",
+    "stats": {
+      "type": "success",
+      "title": "Hardware Throughput & Memory Compression Ratios:",
+      "items": [
+        "FP8 tensor core operations achieve 2x raw TFLOPS throughput compared to 16-bit half precision on NVIDIA Hopper and Blackwell architectures.",
+        "MXFP4 scales small blocks of 32 elements with an independent 8-bit scale factor, preserving numerical dynamic range with 75% memory savings."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: A Multi-Gear Bicycle vs. A Fixed Single-Speed Hub",
+      "text": "A fixed single-speed bicycle forces a rider into a single gear ratio; when encountering a steep mountain, the pedals stall, and on a steep descent, the legs spin uselessly.<br><br><strong>Microscaling provides a dynamic micro-gearbox for every 32 numbers:</strong> Rather than forcing an entire multi-gigabyte weight matrix into a single fixed range where outliers crush precision, every block of 32 weights gets its own private scale exponent."
+    },
+    "diagram": "graph TD\n    Tensor[\"High-Dimensional FP16 Activation/Weight Matrix\"] --> Block[\"Tile into Micro-Blocks of 32 Values\"]\n    Block --> MaxVal[\"Extract Maximum Exponent per 32-Element Block\"]\n    MaxVal --> Scale[\"Store Block Exponent Scale (E8M0)\"]\n    Block --> Quant[\"Quantize 32 Elements to 4-bit Mantissa (E2M1)\"]\n    Quant --> Pack[\"Pack Two 4-bit Elements per Byte\"]\n    Pack --> TensorCores[\"Direct Matrix Multiply on Microscaling Tensor Cores\"]\n    Scale --> TensorCores\n    style TensorCores fill:#065f46,stroke:#10b981,color:#fff\n    style Pack fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Block fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 15: Block-Level Microscaling (MXFP4) Quantization and Hardware Packing",
+    "codeTitle": "mxfp4_microscaling_sim.py",
+    "codeContent": "import torch\n\ndef mxfp4_block_quantize(x: torch.Tensor, block_size: int = 32):\n    # Reshape input tensor into micro-blocks of 32 elements\n    orig_shape = x.shape\n    blocks = x.view(-1, block_size)\n    \n    # Calculate shared 8-bit scale per block (power-of-two exponent)\n    max_abs = blocks.abs().amax(dim=-1, keepdim=True).clamp(min=1e-12)\n    shared_exp = torch.floor(torch.log2(max_abs))\n    shared_scale = 2.0 ** shared_exp\n    \n    # Normalize blocks by shared exponent\n    normalized = blocks / shared_scale\n    \n    # Quantize to 4-bit representation (e.g. E2M1: 1 sign, 2 exp, 1 mantissa)\n    q_blocks = torch.clamp(torch.round(normalized * 6.0), -6.0, 6.0) / 6.0\n    dequantized = (q_blocks * shared_scale).view(orig_shape)\n    return dequantized, shared_scale",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "E4M3 format is optimal for forward passes and activations due to higher precision; E5M2 is optimal for gradients due to wide dynamic range.",
+        "Per-tensor quantization fails in deep networks because activation outliers in residual streams crush small values to zero.",
+        "Microscaling formats standardize 32-element tiling directly into silicon, eliminating software quantization dequantization overhead."
+      ],
+      "badge": "Hardware microscaling unlocks sub-byte tensor arithmetic without sacrificing representational accuracy."
+    }
+  }
+]

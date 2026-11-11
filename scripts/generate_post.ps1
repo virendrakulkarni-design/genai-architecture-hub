@@ -1,4 +1,4 @@
-# Automated Post Generation Script for Windows (GenAI Hub)
+# Automated Post Generation Script (PowerShell for Windows)
 param (
     [switch]$DryRun,
     [switch]$ListQueue
@@ -19,7 +19,7 @@ $posts = Get-Content $postsJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $upcoming = Get-Content $upcomingJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 if ($ListQueue) {
-    Write-Host "Upcoming GenAI Topics count: " $upcoming.Count
+    Write-Host "Upcoming Queued Topics count: " $upcoming.Count
     for ($i = 0; $i -lt $upcoming.Count; $i++) {
         Write-Host "  $($i + 1). [$($upcoming[$i].id)] $($upcoming[$i].title)"
     }
@@ -31,6 +31,7 @@ if ($upcoming.Count -eq 0) {
     exit 0
 }
 
+# Pick next topic
 $nextTopic = $upcoming[0]
 $remaining = @()
 if ($upcoming.Count -gt 1) {
@@ -47,14 +48,17 @@ if ($DryRun) {
     exit 0
 }
 
+# Append to posts
 $newPosts = @($posts) + $nextTopic
 
+# Write JSON files
 $jsonPosts = $newPosts | ConvertTo-Json -Depth 15
 [System.IO.File]::WriteAllText($postsJsonPath, $jsonPosts, [System.Text.Encoding]::UTF8)
 
 $jsonUpcoming = $remaining | ConvertTo-Json -Depth 15
 [System.IO.File]::WriteAllText($upcomingJsonPath, $jsonUpcoming, [System.Text.Encoding]::UTF8)
 
+# Write JS sync file
 $jsContent = "// Auto-generated data sync for direct local file:// and offline execution`r`nwindow.POSTS_DATA = " + $jsonPosts + ";`r`n"
 [System.IO.File]::WriteAllText($postsJsPath, $jsContent, [System.Text.Encoding]::UTF8)
 

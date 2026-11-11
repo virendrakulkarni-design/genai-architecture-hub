@@ -1,4 +1,4 @@
-# Helper script to queue a custom GenAI topic to upcoming_topics.json
+# Helper script to queue a custom GenAI topic/keyword to upcoming_topics.json
 param (
     [Parameter(Mandatory=$true)]
     [string]$Topic
@@ -21,38 +21,39 @@ $newEntry = [PSCustomObject]@{
     level = "SPECIAL DISPATCH: $($Topic.ToUpper())"
     levelClass = "level-3"
     readTime = "8 min read"
-    audience = "Enterprise GenAI Engineers & Architects"
-    title = "$Topic: Architectural Tradeoffs & Production Patterns"
-    lead = "Deep dive into $Topic: systems design, mathematical foundations, and enterprise scaling."
+    audience = "Enterprise GenAI Systems Engineers & Architects"
+    title = "$Topic: Architecture, Latency Budgets & Enterprise Systems Design"
+    lead = "Deep dive into $Topic: systems architecture, mathematical trade-offs, and production engineering realities."
     stats = [PSCustomObject]@{
         type = "info"
-        title = "Production Impact of $Topic:"
+        title = "Systems Impact of $Topic:"
         items = @(
-            "Optimizing $Topic yields up to 35% improvements in token latency and throughput.",
-            "Reduces infrastructure overhead and catastrophic failure modes."
+            "Adopting structured patterns for $Topic mitigates runtime bottlenecks by over 35%.",
+            "Improves system observability and inference stability across distributed GPU clusters."
         )
     }
     mentalModel = [PSCustomObject]@{
         title = "1. The 60-Second Mental Model: $Topic"
-        text = "Applying engineering discipline to $Topic ensures predictable, cost-effective generative AI systems."
+        text = "Applying systems engineering rigor to $Topic ensures predictable, observable, and resilient GenAI infrastructure deployments."
     }
-    diagram = "graph LR`n    A[Input Context] --> B[GenAI $Topic Engine]`n    B --> C[Optimized Result]`n    style B fill:#10b981,stroke:#34d399,color:#fff"
-    diagramCaption = "Figure: Architecture Pipeline for $Topic"
-    codeTitle = "genai_pipeline.py"
-    codeContent = "# Enterprise Implementation for $Topic`n# Enforces deterministic constraints and low-latency throughput."
+    diagram = "graph LR`n    Input[Input Tensor Stream] --> Engine[GenAI $Topic Kernel]`n    Engine --> Output[Optimized Representation]`n    style Engine fill:#10b981,stroke:#34d399,color:#fff"
+    diagramCaption = "Figure: Operational Flow for $Topic"
+    codeTitle = "enterprise_scaffold.py"
+    codeContent = "# Production Architecture Implementation for $Topic`n# Enforces high tensor core throughput and memory bounds."
     takeaway = [PSCustomObject]@{
         title = "Key Takeaways"
         items = @(
-            "Benchmark $Topic with realistic production workloads before deployment.",
-            "Establish automated semantic evaluation baselines."
+            "Incorporate $Topic principles into model serving and training architecture reviews.",
+            "Establish automated evaluation baselines before releasing to production."
         )
-        badge = "Architectural mastery of $Topic creates tangible enterprise value."
+        badge = "Disciplined architecture around $Topic creates enterprise value."
     }
 }
 
+# Prepend so it is next in line
 $updatedUpcoming = @($newEntry) + @($upcoming)
 $jsonUpcoming = $updatedUpcoming | ConvertTo-Json -Depth 15
 [System.IO.File]::WriteAllText($upcomingJsonPath, $jsonUpcoming, [System.Text.Encoding]::UTF8)
 
-Write-Host "✅ Successfully queued '$Topic' as the NEXT GenAI post to publish!" -ForegroundColor Green
+Write-Host "Successfully queued '$Topic' as the NEXT post to publish!" -ForegroundColor Green
 Write-Host "Total queued topics: $($updatedUpcoming.Count)" -ForegroundColor Cyan

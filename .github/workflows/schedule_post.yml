@@ -26,6 +26,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,11 +45,11 @@ jobs:
           CUSTOM_TOPIC: ${{ github.event.inputs.custom_topic }}
         run: |
           if [ -n "$CUSTOM_TOPIC" ]; then
-            echo "🚀 Generating custom suggested topic: $CUSTOM_TOPIC"
-            python scripts/generate_post.py --custom-topic "$CUSTOM_TOPIC"
+            echo "Generating custom suggested topic: $CUSTOM_TOPIC"
+            python -u scripts/generate_post.py --custom-topic "$CUSTOM_TOPIC"
           else
-            echo "📅 Generating next scheduled GenAI topic from queue"
-            python scripts/generate_post.py
+            echo "Generating next scheduled GenAI topic from queue"
+            python -u scripts/generate_post.py
           fi
 
       - name: Commit and Push Updated Knowledge Base
@@ -57,6 +58,7 @@ jobs:
           git config --global user.email "bot@users.noreply.github.com"
           git add data/
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-publish: New GenAI dispatch [skip ci]"
+          git pull --rebase origin main || true
           git push
 
       - name: Setup GitHub Pages
