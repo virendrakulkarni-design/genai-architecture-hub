@@ -1,40 +1,5 @@
 [
   {
-    "id": "topic-4",
-    "topic": "Long-Context KV-Cache Compression: StreamingLLM, SnapKV, and Heavy Hitter Eviction",
-    "level": "LEVEL 14: BOUNDED MEMORY INFERENCE",
-    "levelClass": "level-3",
-    "readTime": "8 min read",
-    "audience": "Systems Engineers & Edge AI Developers",
-    "title": "StreamingLLM and Heavy-Hitter Eviction: Infinite Context with Bounded Memory",
-    "lead": "Deploying conversational agents for multi-day streaming tasks quickly exhausts physical GPU memory. Naively dropping early tokens causes perplexity to explode. By preserving critical initial attention sinks alongside rolling local windows and heavy-hitter tokens, models process millions of tokens in constant memory.",
-    "stats": {
-      "type": "info",
-      "title": "Streaming Inference Benchmarks:",
-      "items": [
-        "Retaining just 4 initial attention sink tokens prevents softmax denominator collapse across 4,000,000+ sequential tokens.",
-        "Heavy Hitter Oracle (H2O) evicts 80% of intermediate KV positions while preserving over 99.2% accuracy on needle-in-a-haystack evaluations."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: The Architect's Desk Pinboard",
-      "text": "An architect does not keep every intermediate draft paper strewn across their working desk. They keep the permanent project charter pinned at the top-left corner (attention sink), the most recent 10 working drawings in front of them (rolling window), and selectively pin 3 critical structural blueprints in the center (heavy hitters).<br><br><strong>Attention Sinks stabilize the softmax denominator:</strong> Transformers dump unallocated attention probability into the first few tokens. Evicting them ruins attention distributions entirely."
-    },
-    "diagram": "graph LR\n    TokenStream[\"Continuous Streaming Token Stream (t=0 to t=N)\"] --> Sinks[\"Initial Attention Sinks (First 4 Tokens)\"]\n    TokenStream --> Middle[\"Intermediate History Tokens\"]\n    TokenStream --> Rolling[\"Recent Local Window (Last 512 Tokens)\"]\n    Middle --> H2O{\"Accumulated Attention Score >= Threshold?\"}\n    H2O -- YES --> Keep[\"Preserve Heavy Hitter Tokens\"]\n    H2O -- NO --> Evict[\"Evict from KV Cache (Reclaim VRAM)\"]\n    Sinks --> Cache[\"Compact Fixed-Size KV Cache\"]\n    Keep --> Cache\n    Rolling --> Cache\n    style Sinks fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Keep fill:#065f46,stroke:#10b981,color:#fff\n    style Evict fill:#7f1d1d,stroke:#f87171,color:#fff",
-    "diagramCaption": "Figure 14: Attention Sinks and Heavy-Hitter KV Eviction Architecture",
-    "codeTitle": "streaming_attention_cache.py",
-    "codeContent": "import torch\n\nclass StreamingKVCache:\n    def __init__(self, n_sinks: int = 4, window_size: int = 512):\n        self.n_sinks = n_sinks\n        self.window_size = window_size\n        self.k_cache = None\n        self.v_cache = None\n\n    def update(self, new_k: torch.Tensor, new_v: torch.Tensor):\n        if self.k_cache is None:\n            self.k_cache, self.v_cache = new_k, new_v\n            return self.k_cache, self.v_cache\n            \n        self.k_cache = torch.cat([self.k_cache, new_k], dim=-2)\n        self.v_cache = torch.cat([self.v_cache, new_v], dim=-2)\n        \n        seq_len = self.k_cache.shape[-2]\n        if seq_len > self.n_sinks + self.window_size:\n            # Keep initial sinks + recent window, evicting the middle\n            sink_k = self.k_cache[:, :, :self.n_sinks, :]\n            window_k = self.k_cache[:, :, -self.window_size:, :]\n            self.k_cache = torch.cat([sink_k, window_k], dim=-2)\n            \n            sink_v = self.v_cache[:, :, :self.n_sinks, :]\n            window_v = self.v_cache[:, :, -self.window_size:, :]\n            self.v_cache = torch.cat([sink_v, window_v], dim=-2)\n            \n        return self.k_cache, self.v_cache",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Softmax requires tokens to absorb residual attention mass; the first 4 tokens act as universal sinks.",
-        "Pure sliding window attention fails because removing the initial tokens induces catastrophic perplexity surges.",
-        "Combining attention sinks with selective eviction allows infinite streaming conversations with bounded constant RAM."
-      ],
-      "badge": "Attention sinks turn memory-bounded LLM streaming from a hardware impossibility into a solved problem."
-    }
-  },
-  {
     "id": "topic-5",
     "topic": "FP8 and Microscaling Formats (MXFP4): Sub-8-Bit Matrix Multiplications on Modern Hardware",
     "level": "LEVEL 15: HARDWARE-AWARE NUMBER SYSTEMS",
@@ -135,6 +100,40 @@
         "Direct alignment eliminates complex hyperparameter tuning of PPO KL-divergence penalties."
       ],
       "badge": "Binary alignment loss functions turn live user feedback into immediate post-training signals."
+    }
+  },
+  {
+    "topic": "Medusa & EAGLE: Multi-Head Speculative Decoding Without a Separate Draft Model",
+    "level": "LEVEL 18: SPECULATIVE ACCELERATION",
+    "levelClass": "level-4",
+    "readTime": "8 min read",
+    "audience": "Systems Architects & Inference Performance Engineers",
+    "title": "Medusa and EAGLE: Multi-Head Speculative Decoding Without Draft Models",
+    "lead": "Traditional speculative decoding requires hosting and synchronizing a secondary draft model in GPU VRAM. Medusa and EAGLE replace the draft model with lightweight prediction heads attached to the base model's final hidden states, generating candidate trees verified in a single forward pass.",
+    "stats": {
+      "type": "success",
+      "title": "Inference Acceleration Benchmarks:",
+      "items": [
+        "Medusa achieves 2.2x to 2.8x wall-clock latency speedup on 70B models without dedicating VRAM to a second draft model.",
+        "Tree attention masks verify up to 64 speculative candidates in a single tensor core forward pass."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Chess Grandmaster Calculating Move Trees",
+      "text": "A novice player calculates one move, makes it, and waits for the opponent to react. A grandmaster calculates a branch tree three plies ahead before touching a piece.<br><br><strong>Medusa drafts branches of future tokens in parallel:</strong> The base model's final hidden state feeds multiple heads simultaneously predicting token t+1, t+2, and t+3. The verification step tests the tree all at once."
+    },
+    "diagram": "graph TD\n    Backbone[\"Base Transformer Backbone\"] --> Hidden[\"Final Hidden State h_t\"]\n    Hidden --> Head0[\"Original LM Head (Token t+1)\"]\n    Hidden --> Head1[\"Medusa Head 1 (Token t+2)\"]\n    Hidden --> Head2[\"Medusa Head 2 (Token t+3)\"]\n    Head0 --> Tree[\"Construct Speculative Token Tree\"]\n    Head1 --> Tree\n    Head2 --> Tree\n    Tree --> TreeAttn[\"Tree Attention Mask Forward Pass\"]\n    TreeAttn --> Accept[\"Accept 2-3 Tokens in One Single Step\"]\n    style Backbone fill:#1e293b,stroke:#64748b,color:#fff\n    style Tree fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Accept fill:#065f46,stroke:#10b981,color:#fff",
+    "diagramCaption": "Figure: Multi-Head Speculative Generation and Tree Attention Verification",
+    "codeTitle": "medusa_tree_verification.py",
+    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MedusaBlock(nn.Module):\n    def __init__(self, d_model: int, vocab_size: int, num_heads: int = 4):\n        super().__init__()\n        self.heads = nn.ModuleList([\n            nn.Sequential(\n                nn.Linear(d_model, d_model),\n                nn.SiLU(),\n                nn.Linear(d_model, vocab_size, bias=False)\n            ) for _ in range(num_heads)\n        ])\n\n    def forward(self, hidden_states: torch.Tensor):\n        # hidden_states: [batch, 1, d_model]\n        # Returns predictions for t+1, t+2, t+3 in a single pass\n        return [head(hidden_states) for head in self.heads]",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Draft model speculative decoding incurs high engineering friction due to model pairing and KV synchronization.",
+        "Medusa heads add less than 1% to overall model parameter count while doubling decoding throughput.",
+        "Tree attention parallelizes candidate verification into standard scaled dot-product attention kernels."
+      ],
+      "badge": "Speculative prediction heads eliminate the memory and operational overhead of dual-model serving."
     }
   }
 ]

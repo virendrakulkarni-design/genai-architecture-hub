@@ -498,5 +498,41 @@ window.POSTS_DATA = [
       "badge": "Iteration-level execution transforms bursty prompt arrivals into continuous, predictable GPU saturation."
     },
     "publishedAt": "2026-11-11 19:43 UTC"
+  },
+  {
+    "id": "post-15",
+    "topic": "Long-Context KV-Cache Compression: StreamingLLM, SnapKV, and Heavy Hitter Eviction",
+    "level": "LEVEL 14: BOUNDED MEMORY INFERENCE",
+    "levelClass": "level-3",
+    "readTime": "8 min read",
+    "audience": "Systems Engineers & Edge AI Developers",
+    "title": "StreamingLLM and Heavy-Hitter Eviction: Infinite Context with Bounded Memory",
+    "lead": "Deploying conversational agents for multi-day streaming tasks quickly exhausts physical GPU memory. Naively dropping early tokens causes perplexity to explode. By preserving critical initial attention sinks alongside rolling local windows and heavy-hitter tokens, models process millions of tokens in constant memory.",
+    "stats": {
+      "type": "info",
+      "title": "Streaming Inference Benchmarks:",
+      "items": [
+        "Retaining just 4 initial attention sink tokens prevents softmax denominator collapse across 4,000,000+ sequential tokens.",
+        "Heavy Hitter Oracle (H2O) evicts 80% of intermediate KV positions while preserving over 99.2% accuracy on needle-in-a-haystack evaluations."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: The Architect's Desk Pinboard",
+      "text": "An architect does not keep every intermediate draft paper strewn across their working desk. They keep the permanent project charter pinned at the top-left corner (attention sink), the most recent 10 working drawings in front of them (rolling window), and selectively pin 3 critical structural blueprints in the center (heavy hitters).<br><br><strong>Attention Sinks stabilize the softmax denominator:</strong> Transformers dump unallocated attention probability into the first few tokens. Evicting them ruins attention distributions entirely."
+    },
+    "diagram": "graph LR\n    TokenStream[\"Continuous Streaming Token Stream (t=0 to t=N)\"] --> Sinks[\"Initial Attention Sinks (First 4 Tokens)\"]\n    TokenStream --> Middle[\"Intermediate History Tokens\"]\n    TokenStream --> Rolling[\"Recent Local Window (Last 512 Tokens)\"]\n    Middle --> H2O{\"Accumulated Attention Score >= Threshold?\"}\n    H2O -- YES --> Keep[\"Preserve Heavy Hitter Tokens\"]\n    H2O -- NO --> Evict[\"Evict from KV Cache (Reclaim VRAM)\"]\n    Sinks --> Cache[\"Compact Fixed-Size KV Cache\"]\n    Keep --> Cache\n    Rolling --> Cache\n    style Sinks fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Keep fill:#065f46,stroke:#10b981,color:#fff\n    style Evict fill:#7f1d1d,stroke:#f87171,color:#fff",
+    "diagramCaption": "Figure 14: Attention Sinks and Heavy-Hitter KV Eviction Architecture",
+    "codeTitle": "streaming_attention_cache.py",
+    "codeContent": "import torch\n\nclass StreamingKVCache:\n    def __init__(self, n_sinks: int = 4, window_size: int = 512):\n        self.n_sinks = n_sinks\n        self.window_size = window_size\n        self.k_cache = None\n        self.v_cache = None\n\n    def update(self, new_k: torch.Tensor, new_v: torch.Tensor):\n        if self.k_cache is None:\n            self.k_cache, self.v_cache = new_k, new_v\n            return self.k_cache, self.v_cache\n            \n        self.k_cache = torch.cat([self.k_cache, new_k], dim=-2)\n        self.v_cache = torch.cat([self.v_cache, new_v], dim=-2)\n        \n        seq_len = self.k_cache.shape[-2]\n        if seq_len > self.n_sinks + self.window_size:\n            # Keep initial sinks + recent window, evicting the middle\n            sink_k = self.k_cache[:, :, :self.n_sinks, :]\n            window_k = self.k_cache[:, :, -self.window_size:, :]\n            self.k_cache = torch.cat([sink_k, window_k], dim=-2)\n            \n            sink_v = self.v_cache[:, :, :self.n_sinks, :]\n            window_v = self.v_cache[:, :, -self.window_size:, :]\n            self.v_cache = torch.cat([sink_v, window_v], dim=-2)\n            \n        return self.k_cache, self.v_cache",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Softmax requires tokens to absorb residual attention mass; the first 4 tokens act as universal sinks.",
+        "Pure sliding window attention fails because removing the initial tokens induces catastrophic perplexity surges.",
+        "Combining attention sinks with selective eviction allows infinite streaming conversations with bounded constant RAM."
+      ],
+      "badge": "Attention sinks turn memory-bounded LLM streaming from a hardware impossibility into a solved problem."
+    },
+    "publishedAt": "2026-11-12 01:41 UTC"
   }
 ];
