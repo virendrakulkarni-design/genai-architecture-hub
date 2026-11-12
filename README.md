@@ -17,13 +17,15 @@ All post generation adheres to the **Humanizer Skill** located in [`skills/human
 
 ---
 
-## Hourly Automated Scheduling (Every Hour at Minute 00)
+## Automated Publishing & Self-Healing Pipeline
 
-This repository automatically publishes a new in-depth architectural post every hour:
-- **Frequency:** `0 * * * *` (Every hour at minute 00).
+This repository automatically publishes in-depth architectural posts using GitHub Actions:
+- **Frequency:** `*/5 * * * *` (Scheduled continuous runs).
 - **Automation Pipeline:** [`.github/workflows/schedule_post.yml`](.github/workflows/schedule_post.yml)
-- **Generation Script:** [`scripts/generate_post.py`](scripts/generate_post.py) & [`scripts/generate_post.ps1`](scripts/generate_post.ps1).
-- **Topic Backlog:** Stored in [`data/upcoming_topics.json`](data/upcoming_topics.json) (covering Speculative Decoding, Hybrid Search/RRF, PagedAttention/FlashAttention, Diffusion Transformers, and Test-Time Compute).
+- **Generation Scripts:** [`scripts/generate_post.py`](scripts/generate_post.py) & [`scripts/generate_post.ps1`](scripts/generate_post.ps1).
+- **Self-Healing Replenishment:** When upcoming topics drop below threshold, the runner automatically draws from a reserve pool and procedural architectural generators, preventing the queue from ever running dry.
+- **Strict Deduplication:** Employs a 4-layer deduplication engine (exact match, substring containment, technical bigrams, and token Jaccard similarity) to ensure every post is mathematically distinct from all historical dispatches.
+- **Topic Backlog:** Stored in [`data/upcoming_topics.json`](data/upcoming_topics.json).
 
 ---
 
@@ -31,18 +33,21 @@ This repository automatically publishes a new in-depth architectural post every 
 
 ### From GitHub Actions UI:
 1. Go to the **Actions** tab in this repository.
-2. Select **"Hourly GenAI Architectural Publisher"**.
+2. Select **"5-Minute GenAI Architectural Publisher"**.
 3. Click **"Run workflow"**.
-4. Enter any topic (e.g. `Diffusion Models`, `Reasoning Models`, `KV Cache Optimization`, `DPO`).
-5. Click **Run workflow** to publish immediately.
+4. Enter any topic (e.g. `Mixture of Depths`, `Rotary Embeddings & YaRN`, `Triton Kernels`, `DPO vs KTO`).
+5. Click **Run workflow** to synthesize and publish immediately.
 
 ### From Command Line:
 ```powershell
 # Immediately generate and publish:
-python scripts/generate_post.py --custom-topic "Diffusion Models"
+python scripts/generate_post.py --custom-topic "Mixture of Depths"
 
-# Queue a custom topic for the next hourly run:
-powershell scripts\queue_topic.ps1 -Topic "Vision Transformers (ViT)"
+# Queue a custom topic for the next scheduled run:
+powershell -ExecutionPolicy Bypass -File scripts\queue_topic.ps1 -Topic "Vision Transformers (ViT)"
+
+# List remaining queued topics:
+python scripts/generate_post.py --list-queue
 ```
 
 ---
@@ -51,8 +56,8 @@ powershell scripts\queue_topic.ps1 -Topic "Vision Transformers (ViT)"
 
 ### GitHub Pages (Recommended)
 1. Push to GitHub.
-2. Under **Settings > Pages**, set Source to **Deploy from a branch (main / root)** or **GitHub Actions**.
-3. Add `ANTHROPIC_API_KEY` under **Repository Settings > Secrets and variables > Actions** (optional for dynamic synthesis).
+2. Under **Settings > Pages**, set Source to **GitHub Actions**.
+3. Add `ANTHROPIC_API_KEY` under **Repository Settings > Secrets and variables > Actions** (optional for dynamic LLM synthesis; built-in procedural templates serve as zero-dependency fallbacks).
 
 ### Docker Compose (Corporate Intranet / VPN)
 ```bash
