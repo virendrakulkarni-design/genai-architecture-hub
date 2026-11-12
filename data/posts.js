@@ -534,5 +534,41 @@ window.POSTS_DATA = [
       "badge": "Attention sinks turn memory-bounded LLM streaming from a hardware impossibility into a solved problem."
     },
     "publishedAt": "2026-11-12 01:41 UTC"
+  },
+  {
+    "id": "post-16",
+    "topic": "FP8 and Microscaling Formats (MXFP4): Sub-8-Bit Matrix Multiplications on Modern Hardware",
+    "level": "LEVEL 15: HARDWARE-AWARE NUMBER SYSTEMS",
+    "levelClass": "level-4",
+    "readTime": "8 min read",
+    "audience": "Deep Learning Systems Engineers & Hardware Performance Specialists",
+    "title": "FP8 and Microscaling Formats: Unlocking 2x Compute Density on Modern GPUs",
+    "lead": "Scaling large language models beyond 100 billion parameters strains memory bandwidth and arithmetic units. Moving from FP16 to FP8 (E4M3/E5M2) and Open Compute Project Microscaling Formats (MXFP4) doubles tensor core throughput while mitigating catastrophic activation outliers.",
+    "stats": {
+      "type": "success",
+      "title": "Hardware Throughput & Memory Compression Ratios:",
+      "items": [
+        "FP8 tensor core operations achieve 2x raw TFLOPS throughput compared to 16-bit half precision on NVIDIA Hopper and Blackwell architectures.",
+        "MXFP4 scales small blocks of 32 elements with an independent 8-bit scale factor, preserving numerical dynamic range with 75% memory savings."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: A Multi-Gear Bicycle vs. A Fixed Single-Speed Hub",
+      "text": "A fixed single-speed bicycle forces a rider into a single gear ratio; when encountering a steep mountain, the pedals stall, and on a steep descent, the legs spin uselessly.<br><br><strong>Microscaling provides a dynamic micro-gearbox for every 32 numbers:</strong> Rather than forcing an entire multi-gigabyte weight matrix into a single fixed range where outliers crush precision, every block of 32 weights gets its own private scale exponent."
+    },
+    "diagram": "graph TD\n    Tensor[\"High-Dimensional FP16 Activation/Weight Matrix\"] --> Block[\"Tile into Micro-Blocks of 32 Values\"]\n    Block --> MaxVal[\"Extract Maximum Exponent per 32-Element Block\"]\n    MaxVal --> Scale[\"Store Block Exponent Scale (E8M0)\"]\n    Block --> Quant[\"Quantize 32 Elements to 4-bit Mantissa (E2M1)\"]\n    Quant --> Pack[\"Pack Two 4-bit Elements per Byte\"]\n    Pack --> TensorCores[\"Direct Matrix Multiply on Microscaling Tensor Cores\"]\n    Scale --> TensorCores\n    style TensorCores fill:#065f46,stroke:#10b981,color:#fff\n    style Pack fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Block fill:#1e293b,stroke:#64748b,color:#fff",
+    "diagramCaption": "Figure 15: Block-Level Microscaling (MXFP4) Quantization and Hardware Packing",
+    "codeTitle": "mxfp4_microscaling_sim.py",
+    "codeContent": "import torch\n\ndef mxfp4_block_quantize(x: torch.Tensor, block_size: int = 32):\n    # Reshape input tensor into micro-blocks of 32 elements\n    orig_shape = x.shape\n    blocks = x.view(-1, block_size)\n    \n    # Calculate shared 8-bit scale per block (power-of-two exponent)\n    max_abs = blocks.abs().amax(dim=-1, keepdim=True).clamp(min=1e-12)\n    shared_exp = torch.floor(torch.log2(max_abs))\n    shared_scale = 2.0 ** shared_exp\n    \n    # Normalize blocks by shared exponent\n    normalized = blocks / shared_scale\n    \n    # Quantize to 4-bit representation (e.g. E2M1: 1 sign, 2 exp, 1 mantissa)\n    q_blocks = torch.clamp(torch.round(normalized * 6.0), -6.0, 6.0) / 6.0\n    dequantized = (q_blocks * shared_scale).view(orig_shape)\n    return dequantized, shared_scale",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "E4M3 format is optimal for forward passes and activations due to higher precision; E5M2 is optimal for gradients due to wide dynamic range.",
+        "Per-tensor quantization fails in deep networks because activation outliers in residual streams crush small values to zero.",
+        "Microscaling formats standardize 32-element tiling directly into silicon, eliminating software quantization dequantization overhead."
+      ],
+      "badge": "Hardware microscaling unlocks sub-byte tensor arithmetic without sacrificing representational accuracy."
+    },
+    "publishedAt": "2026-11-12 16:27 UTC"
   }
 ];
