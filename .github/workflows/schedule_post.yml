@@ -1,9 +1,9 @@
-name: 5-Minute GenAI Architectural Publisher
+name: GenAI Architectural Publisher (3x Daily)
 
 on:
   schedule:
-    # Runs every 5 minutes
-    - cron: '*/5 * * * *'
+    # Runs 3 times a day (every 8 hours at 00:00, 08:00, 16:00 UTC)
+    - cron: '0 */8 * * *'
   workflow_dispatch:
     inputs:
       custom_topic:

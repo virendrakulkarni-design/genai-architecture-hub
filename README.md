@@ -19,8 +19,8 @@ All post generation adheres to the **Humanizer Skill** located in [`skills/human
 
 ## Automated Publishing & Self-Healing Pipeline
 
-This repository automatically publishes in-depth architectural posts using GitHub Actions:
-- **Frequency:** `*/5 * * * *` (Scheduled continuous runs).
+This repository automatically publishes in-depth architectural posts 3 times a day using GitHub Actions:
+- **Frequency:** `0 */8 * * *` (3 times daily at 00:00, 08:00, and 16:00 UTC).
 - **Automation Pipeline:** [`.github/workflows/schedule_post.yml`](.github/workflows/schedule_post.yml)
 - **Generation Scripts:** [`scripts/generate_post.py`](scripts/generate_post.py) & [`scripts/generate_post.ps1`](scripts/generate_post.ps1).
 - **Self-Healing Replenishment:** When upcoming topics drop below threshold, the runner automatically draws from a reserve pool and procedural architectural generators, preventing the queue from ever running dry.
@@ -33,7 +33,7 @@ This repository automatically publishes in-depth architectural posts using GitHu
 
 ### From GitHub Actions UI:
 1. Go to the **Actions** tab in this repository.
-2. Select **"5-Minute GenAI Architectural Publisher"**.
+2. Select **"GenAI Architectural Publisher (3x Daily)"**.
 3. Click **"Run workflow"**.
 4. Enter any topic (e.g. `Mixture of Depths`, `Rotary Embeddings & YaRN`, `Triton Kernels`, `DPO vs KTO`).
 5. Click **Run workflow** to synthesize and publish immediately.
