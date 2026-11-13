@@ -573,8 +573,8 @@ window.POSTS_DATA = [
   },
   {
     "topic": "GraphRAG: Knowledge Graphs and Hierarchical Leiden Community Summarization",
-    "level": "LEVEL 16: STRUCTURAL KNOWLEDGE RETRIEVAL",
-    "levelClass": "level-3",
+    "level": "Medium",
+    "levelClass": "level-medium",
     "readTime": "9 min read",
     "audience": "Knowledge Systems Architects & Enterprise AI Leads",
     "title": "GraphRAG and Hierarchical Community Summarization: Conquering Global Dataset Synthesis",
