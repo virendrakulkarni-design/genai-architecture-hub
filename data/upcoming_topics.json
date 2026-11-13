@@ -1,8 +1,8 @@
 [
   {
     "topic": "Direct Preference Optimization (DPO) vs. Kahneman-Tversky Optimization (KTO): Reference-Free Alignment",
-    "level": "LEVEL 17: MODERN POST-TRAINING ALIGNMENT",
-    "levelClass": "level-3",
+    "level": "Medium",
+    "levelClass": "level-medium",
     "readTime": "8 min read",
     "audience": "Post-Training Research Engineers & Alignment Specialists",
     "title": "DPO vs. KTO: Aligning Frontier LLMs with Asymmetric Loss Functions",
@@ -35,8 +35,8 @@
   },
   {
     "topic": "Medusa & EAGLE: Multi-Head Speculative Decoding Without a Separate Draft Model",
-    "level": "LEVEL 18: SPECULATIVE ACCELERATION",
-    "levelClass": "level-4",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
     "readTime": "8 min read",
     "audience": "Systems Architects & Inference Performance Engineers",
     "title": "Medusa and EAGLE: Multi-Head Speculative Decoding Without Draft Models",
@@ -69,8 +69,8 @@
   },
   {
     "topic": "Rotary Position Embeddings (RoPE) & YaRN: Context Extension Beyond Pre-Training Limits",
-    "level": "LEVEL 19: MATHEMATICAL POSITIONAL ENCODING",
-    "levelClass": "level-4",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
     "readTime": "9 min read",
     "audience": "Frontier AI Researchers & Foundation Model Architects",
     "title": "Rotary Embeddings and YaRN: Extending Context Windows from 4k to 128k Tokens",

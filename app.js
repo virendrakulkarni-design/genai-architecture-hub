@@ -98,7 +98,7 @@ async function showPost(index, shouldScroll = true) {
     <article id="${post.id}" class="post-card">
       <div class="post-header">
         <div class="post-meta">
-          <span class="meta-pill meta-level ${post.levelClass || 'level-1'}">${escapeHtml(post.level)}</span>
+          <span class="meta-pill meta-level ${post.levelClass || ('level-' + (post.level || 'medium').toLowerCase())}">${escapeHtml(post.level)}</span>
           ${isLatest ? '<span class="meta-pill meta-latest">LATEST DISPATCH</span>' : ''}
           ${post.publishedAt ? `<span class="meta-pill meta-date">Published: ${escapeHtml(post.publishedAt)}</span>` : ''}
           <span class="meta-pill meta-time">${escapeHtml(post.readTime)}</span>
@@ -263,7 +263,12 @@ function renderSidebarList(posts) {
   if (!listContainer) return;
 
   if (countBadge) {
-    countBadge.textContent = `${posts.length} dispatches`;
+    if (activeDifficultyFilter !== 'all') {
+      const label = activeDifficultyFilter.charAt(0).toUpperCase() + activeDifficultyFilter.slice(1);
+      countBadge.textContent = `${posts.length} ${label} dispatches`;
+    } else {
+      countBadge.textContent = `${posts.length} dispatches`;
+    }
   }
 
   if (posts.length === 0) {
@@ -273,12 +278,13 @@ function renderSidebarList(posts) {
 
   listContainer.innerHTML = posts.map((post) => {
     const originalIndex = allPosts.findIndex(p => p.id === post.id);
-    const shortLevel = post.level.split(':')[0] || `LEVEL ${originalIndex + 1}`;
+    const shortLevel = post.level || 'Medium';
+    const levelClass = post.levelClass || `level-${shortLevel.toLowerCase()}`;
     const isLatest = (originalIndex === allPosts.length - 1);
     return `
       <div class="sidebar-item ${originalIndex === currentIndex ? 'active' : ''}" data-index="${originalIndex}" onclick="showPost(${originalIndex})">
         <div class="sidebar-item-top">
-          <span class="sidebar-item-level">${escapeHtml(shortLevel)}</span>
+          <span class="sidebar-item-level ${escapeHtml(levelClass)}">${escapeHtml(shortLevel)}</span>
           ${isLatest ? '<span class="sidebar-latest-tag">LATEST</span>' : ''}
         </div>
         <div class="sidebar-item-title">${escapeHtml(post.title)}</div>
@@ -299,11 +305,12 @@ function renderMobilePills() {
   if (!container) return;
 
   container.innerHTML = allPosts.map((post, idx) => {
-    const shortLabel = post.level.split(':')[1]?.trim() || post.title.slice(0, 14);
+    const diffLabel = post.level || 'Medium';
+    const levelClass = post.levelClass || `level-${diffLabel.toLowerCase()}`;
     return `
-      <button class="tab-btn ${idx === currentIndex ? 'active' : ''}" onclick="showPost(${idx})">
-        <span class="tab-num">L${idx + 1}</span>
-        <span class="tab-label">${escapeHtml(shortLabel)}</span>
+      <button class="tab-btn ${idx === currentIndex ? 'active' : ''} ${escapeHtml(levelClass)}" onclick="showPost(${idx})">
+        <span class="tab-num">#${idx + 1}</span>
+        <span class="tab-label">${escapeHtml(diffLabel)}</span>
       </button>
     `;
   }).join('');
@@ -317,7 +324,7 @@ function initDropdown() {
   if (!dropdown) return;
 
   dropdown.innerHTML = allPosts.map((p, idx) => `
-    <option value="${idx}">L${idx + 1}: ${escapeHtml(p.title)}</option>
+    <option value="${idx}">#${idx + 1} [${escapeHtml(p.level || 'Medium')}]: ${escapeHtml(p.title)}</option>
   `).join('');
 
   dropdown.addEventListener('change', (e) => {
@@ -389,27 +396,54 @@ function initKeyboardNav() {
 }
 
 /**
- * Sidebar Search & Filter
+ * Sidebar Search & Difficulty Filter
  */
-function initSidebarSearch() {
-  const searchInput = document.getElementById('searchInput');
-  if (!searchInput) return;
+let activeDifficultyFilter = 'all';
 
-  searchInput.addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    if (!q) {
-      renderSidebarList(allPosts);
-      return;
+function filterSidebar() {
+  const searchInput = document.getElementById('searchInput');
+  const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  const filtered = allPosts.filter(p => {
+    // Difficulty filter
+    if (activeDifficultyFilter !== 'all') {
+      const pLevel = (p.level || '').toLowerCase();
+      if (pLevel !== activeDifficultyFilter) {
+        return false;
+      }
     }
 
-    const filtered = allPosts.filter(p => 
+    // Text search query
+    if (!q) return true;
+
+    return (
       p.title.toLowerCase().includes(q) ||
       p.lead.toLowerCase().includes(q) ||
-      p.level.toLowerCase().includes(q) ||
+      (p.level && p.level.toLowerCase().includes(q)) ||
+      (p.audience && p.audience.toLowerCase().includes(q)) ||
       (p.mentalModel && p.mentalModel.text.toLowerCase().includes(q))
     );
+  });
 
-    renderSidebarList(filtered);
+  renderSidebarList(filtered);
+}
+
+function initSidebarSearch() {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      filterSidebar();
+    });
+  }
+
+  // Bind difficulty filter chips
+  document.querySelectorAll('.difficulty-filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.difficulty-filter-btn').forEach(b => b.classList.remove('active'));
+      e.currentTarget.classList.add('active');
+      activeDifficultyFilter = e.currentTarget.getAttribute('data-difficulty') || 'all';
+      filterSidebar();
+    });
   });
 }
 
@@ -446,7 +480,7 @@ function copyPostMarkdown(postId) {
   const statsText = post.stats.items.map(i => `• ${stripHtml(i)}`).join('\n');
   const takeawayText = post.takeaway.items.map((it, idx) => `${idx + 1}. ${stripHtml(it)}`).join('\n');
 
-  const markdown = `*GenAI Architectural Dispatch | ${post.level}*
+  const markdown = `*GenAI Architectural Dispatch | Difficulty: ${post.level}*
 ═══════════════════════════════════════════════════════════════
 *${post.title}*
 ${post.publishedAt ? `Published: ${post.publishedAt}\n` : ''}

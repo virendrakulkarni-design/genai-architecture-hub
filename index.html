@@ -76,6 +76,14 @@
         <input type="text" id="searchInput" class="sidebar-input" placeholder="Search Transformers, MoE, LoRA, RAG..." />
       </div>
 
+      <!-- Difficulty Filter Chips -->
+      <div class="sidebar-difficulty-filters" role="group" aria-label="Filter by difficulty">
+        <button class="difficulty-filter-btn active" data-difficulty="all" title="Show all dispatches">All</button>
+        <button class="difficulty-filter-btn diff-easy" data-difficulty="easy" title="Show Easy dispatches">Easy</button>
+        <button class="difficulty-filter-btn diff-medium" data-difficulty="medium" title="Show Medium dispatches">Medium</button>
+        <button class="difficulty-filter-btn diff-advanced" data-difficulty="advanced" title="Show Advanced dispatches">Advanced</button>
+      </div>
+
       <!-- Dynamic Sidebar List -->
       <nav id="sidebarList" class="sidebar-list" aria-label="Dispatches list">
         <!-- Rendered dynamically by app.js -->

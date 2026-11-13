@@ -482,6 +482,60 @@ body.light-theme .top-nav {
   border-color: var(--accent-primary);
 }
 
+/* Sidebar Difficulty Filter Chips */
+.sidebar-difficulty-filters {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.difficulty-filter-btn {
+  flex: 1;
+  padding: 5px 4px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.difficulty-filter-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-tertiary);
+}
+
+.difficulty-filter-btn.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.difficulty-filter-btn.diff-easy.active {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.difficulty-filter-btn.diff-medium.active {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.12);
+}
+
+.difficulty-filter-btn.diff-advanced.active {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.12);
+}
+
 .sidebar-list {
   overflow-y: auto;
   padding-right: 4px;
@@ -521,10 +575,35 @@ body.light-theme .top-nav {
 
 .sidebar-item-level {
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent-blue);
-  letter-spacing: 0.02em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.sidebar-item-level.level-easy,
+.sidebar-item-level.level-1 {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.sidebar-item-level.level-medium,
+.sidebar-item-level.level-2,
+.sidebar-item-level.level-3 {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.25);
+}
+
+.sidebar-item-level.level-advanced,
+.sidebar-item-level.level-4 {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.25);
 }
 
 .sidebar-latest-tag {
@@ -607,6 +686,10 @@ body.light-theme .top-nav {
   border-radius: 3px;
 }
 
+.tab-btn.level-easy .tab-num { color: #38bdf8; background: rgba(56, 189, 248, 0.12); }
+.tab-btn.level-medium .tab-num { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
+.tab-btn.level-advanced .tab-num { color: #f87171; background: rgba(248, 113, 113, 0.12); }
+
 /* Reader Main Card */
 .reader-main {
   min-width: 0;
@@ -665,10 +748,15 @@ body.light-theme .top-nav {
   letter-spacing: 0.02em;
 }
 
+.meta-pill.meta-level.level-easy,
 .meta-pill.meta-level.level-1 { background: rgba(56, 189, 248, 0.12); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }
-.meta-pill.meta-level.level-2 { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+
+.meta-pill.meta-level.level-medium,
+.meta-pill.meta-level.level-2,
 .meta-pill.meta-level.level-3 { background: rgba(251, 191, 36, 0.12); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
-.meta-pill.meta-level.level-4 { background: rgba(168, 85, 247, 0.12); color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+
+.meta-pill.meta-level.level-advanced,
+.meta-pill.meta-level.level-4 { background: rgba(248, 113, 113, 0.12); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
 
 .meta-pill.meta-latest {
   font-weight: 700;
