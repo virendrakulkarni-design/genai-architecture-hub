@@ -1,39 +1,5 @@
 [
   {
-    "topic": "Medusa & EAGLE: Multi-Head Speculative Decoding Without a Separate Draft Model",
-    "level": "Advanced",
-    "levelClass": "level-advanced",
-    "readTime": "8 min read",
-    "audience": "Systems Architects & Inference Performance Engineers",
-    "title": "Medusa and EAGLE: Multi-Head Speculative Decoding Without Draft Models",
-    "lead": "Traditional speculative decoding requires hosting and synchronizing a secondary draft model in GPU VRAM. Medusa and EAGLE replace the draft model with lightweight prediction heads attached to the base model's final hidden states, generating candidate trees verified in a single forward pass.",
-    "stats": {
-      "type": "success",
-      "title": "Inference Acceleration Benchmarks:",
-      "items": [
-        "Medusa achieves 2.2x to 2.8x wall-clock latency speedup on 70B models without dedicating VRAM to a second draft model.",
-        "Tree attention masks verify up to 64 speculative candidates in a single tensor core forward pass."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: The Chess Grandmaster Calculating Move Trees",
-      "text": "A novice player calculates one move, makes it, and waits for the opponent to react. A grandmaster calculates a branch tree three plies ahead before touching a piece.<br><br><strong>Medusa drafts branches of future tokens in parallel:</strong> The base model's final hidden state feeds multiple heads simultaneously predicting token t+1, t+2, and t+3. The verification step tests the tree all at once."
-    },
-    "diagram": "graph TD\n    Backbone[\"Base Transformer Backbone\"] --> Hidden[\"Final Hidden State h_t\"]\n    Hidden --> Head0[\"Original LM Head (Token t+1)\"]\n    Hidden --> Head1[\"Medusa Head 1 (Token t+2)\"]\n    Hidden --> Head2[\"Medusa Head 2 (Token t+3)\"]\n    Head0 --> Tree[\"Construct Speculative Token Tree\"]\n    Head1 --> Tree\n    Head2 --> Tree\n    Tree --> TreeAttn[\"Tree Attention Mask Forward Pass\"]\n    TreeAttn --> Accept[\"Accept 2-3 Tokens in One Single Step\"]\n    style Backbone fill:#1e293b,stroke:#64748b,color:#fff\n    style Tree fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Accept fill:#065f46,stroke:#10b981,color:#fff",
-    "diagramCaption": "Figure: Multi-Head Speculative Generation and Tree Attention Verification",
-    "codeTitle": "medusa_tree_verification.py",
-    "codeContent": "import torch\nimport torch.nn as nn\n\nclass MedusaBlock(nn.Module):\n    def __init__(self, d_model: int, vocab_size: int, num_heads: int = 4):\n        super().__init__()\n        self.heads = nn.ModuleList([\n            nn.Sequential(\n                nn.Linear(d_model, d_model),\n                nn.SiLU(),\n                nn.Linear(d_model, vocab_size, bias=False)\n            ) for _ in range(num_heads)\n        ])\n\n    def forward(self, hidden_states: torch.Tensor):\n        # hidden_states: [batch, 1, d_model]\n        # Returns predictions for t+1, t+2, t+3 in a single pass\n        return [head(hidden_states) for head in self.heads]",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Draft model speculative decoding incurs high engineering friction due to model pairing and KV synchronization.",
-        "Medusa heads add less than 1% to overall model parameter count while doubling decoding throughput.",
-        "Tree attention parallelizes candidate verification into standard scaled dot-product attention kernels."
-      ],
-      "badge": "Speculative prediction heads eliminate the memory and operational overhead of dual-model serving."
-    }
-  },
-  {
     "topic": "Rotary Position Embeddings (RoPE) & YaRN: Context Extension Beyond Pre-Training Limits",
     "level": "Advanced",
     "levelClass": "level-advanced",
@@ -167,6 +133,40 @@
         "Balance parameter scaling against hardware SRAM and HBM memory capacities."
       ],
       "badge": "Mastering RingAttention: Distributed Context Windows Across 100+ GPU Nodes separates experimental prototypes from resilient production AI systems."
+    }
+  },
+  {
+    "topic": "Speculative Routing: Multi-Tier Inference Cascades for Frontier Models",
+    "publishedAt": "2026-11-13 21:43 UTC",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
+    "readTime": "8 min read",
+    "audience": "Senior GenAI Systems Community",
+    "title": "Architecting Speculative Routing: Multi-Tier Inference Cascades for Frontier Models: Systems Design, Latency & Hardware Bounds",
+    "lead": "Deploying production infrastructure around Speculative Routing: Multi-Tier Inference Cascades for Frontier Models demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
+    "stats": {
+      "type": "info",
+      "title": "Performance Benchmarks in Speculative Routing: Multi-Tier Inference Cascades for Frontier Models:",
+      "items": [
+        "Optimizing Speculative Routing: Multi-Tier Inference Cascades for Frontier Models mitigates memory bandwidth bottlenecks by over 38%.",
+        "Stabilizes generation throughput across multi-node distributed clusters."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Speculative Routing: Multi-Tier Inference Cascades for Frontier Models",
+      "text": "Just as database engines balance buffer pool memory against disk I/O, Speculative Routing: Multi-Tier Inference Cascades for Frontier Models balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
+    },
+    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Speculative Routing: Multi-Tier Inference Cascades for Frontier Models Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure: Computational Flow for Speculative Routing: Multi-Tier Inference Cascades for Frontier Models",
+    "codeTitle": "genai_pipeline_kernel.py",
+    "codeContent": "# Implementation Pattern for Speculative Routing: Multi-Tier Inference Cascades for Frontier Models\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Profile Speculative Routing: Multi-Tier Inference Cascades for Frontier Models kernels using PyTorch Profiler or Nsight Systems before deploying.",
+        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
+      ],
+      "badge": "Mastering Speculative Routing: Multi-Tier Inference Cascades for Frontier Models separates experimental prototypes from resilient production AI systems."
     }
   }
 ]
