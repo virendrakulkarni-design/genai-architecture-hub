@@ -13,18 +13,13 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 concurrency:
-  group: 'pages'
-  cancel-in-progress: true
+  group: 'genai-publisher'
+  cancel-in-progress: false
 
 jobs:
-  publish_and_deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  publish_post:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,12 +31,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install anthropic
-
       - name: Execute Automated GenAI Post Generator
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CUSTOM_TOPIC: ${{ github.event.inputs.custom_topic }}
         run: |
           if [ -n "$CUSTOM_TOPIC" ]; then
@@ -60,15 +51,3 @@ jobs:
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-publish: New GenAI dispatch [skip ci]"
           git pull --rebase origin main || true
           git push
-
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

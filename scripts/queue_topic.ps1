@@ -1,7 +1,9 @@
 # Helper script to queue a custom GenAI topic/keyword to upcoming_topics.json
 param (
     [Parameter(Mandatory=$true)]
-    [string]$Topic
+    [string]$Topic,
+    [ValidateSet("Easy", "Medium", "Advanced")]
+    [string]$Difficulty = "Advanced"
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -14,12 +16,13 @@ if (-not (Test-Path $upcomingJsonPath)) {
 }
 
 $upcoming = Get-Content $upcomingJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$levelClass = "level-$($Difficulty.ToLower())"
 
 $newEntry = [PSCustomObject]@{
     id = "custom-$((Get-Date).Ticks)"
     topic = $Topic
-    level = "SPECIAL DISPATCH: $($Topic.ToUpper())"
-    levelClass = "level-3"
+    level = $Difficulty
+    levelClass = $levelClass
     readTime = "8 min read"
     audience = "Enterprise GenAI Systems Engineers & Architects"
     title = "$Topic: Architecture, Latency Budgets & Enterprise Systems Design"
@@ -55,5 +58,5 @@ $updatedUpcoming = @($newEntry) + @($upcoming)
 $jsonUpcoming = $updatedUpcoming | ConvertTo-Json -Depth 15
 [System.IO.File]::WriteAllText($upcomingJsonPath, $jsonUpcoming, [System.Text.Encoding]::UTF8)
 
-Write-Host "Successfully queued '$Topic' as the NEXT post to publish!" -ForegroundColor Green
+Write-Host "Successfully queued '$Topic' ($Difficulty) as the NEXT post to publish!" -ForegroundColor Green
 Write-Host "Total queued topics: $($updatedUpcoming.Count)" -ForegroundColor Cyan

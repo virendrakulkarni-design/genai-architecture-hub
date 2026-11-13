@@ -23,59 +23,18 @@ def remove_emojis(text):
     """Strip all unicode emojis, symbols, and pictographs for pure humanized prose."""
     if not isinstance(text, str):
         return text
-    emoji_pattern = re.compile(
-        "["
-        "\U00010000-\U0010FFFF"  # Supplemental symbols, pictographs, emojis
-        "\u2600-\u27BF"          # Misc symbols & dingbats
-        "\u2300-\u23FF"          # Misc technical
-        "\u2B50\u2B55\u2934\u2935\u25AA\u25AB\u25FE\u25FD\u25FB\u25FC"
-        "]+",
-        flags=re.UNICODE
-    )
-    cleaned = emoji_pattern.sub("", text)
+    cleaned = re.sub(r'[\U00010000-\U0010FFFF\u2600-\u27BF\u2300-\u23FF\u2B50-\u2B55\u25AA-\u25FE]+', '', text)
     return re.sub(r' +', ' ', cleaned).strip()
 
-def humanize_post(post):
-    """
-    Apply Humanizer skill constraints:
-    1. Strictly zero emojis across all fields.
-    2. Direct, natural phrasing for takeaways and titles.
-    """
-    if not post or not isinstance(post, dict):
-        return post
-
-    # Clean top-level text fields
-    for field in ["title", "lead", "level", "readTime", "audience", "diagramCaption"]:
-        if field in post and isinstance(post[field], str):
-            post[field] = remove_emojis(post[field])
-
-    # Clean stats block
-    if "stats" in post and isinstance(post["stats"], dict):
-        if "title" in post["stats"]:
-            post["stats"]["title"] = remove_emojis(post["stats"]["title"])
-        if "items" in post["stats"] and isinstance(post["stats"]["items"], list):
-            post["stats"]["items"] = [remove_emojis(item) for item in post["stats"]["items"]]
-
-    # Clean mental model block
-    if "mentalModel" in post and isinstance(post["mentalModel"], dict):
-        if "title" in post["mentalModel"]:
-            post["mentalModel"]["title"] = remove_emojis(post["mentalModel"]["title"])
-        if "text" in post["mentalModel"]:
-            post["mentalModel"]["text"] = remove_emojis(post["mentalModel"]["text"])
-
-    # Clean takeaway block
-    if "takeaway" in post and isinstance(post["takeaway"], dict):
-        if "title" in post["takeaway"]:
-            clean_title = remove_emojis(post["takeaway"]["title"]).strip()
-            if not clean_title or "takeaway" not in clean_title.lower():
-                clean_title = "Key Takeaways"
-            post["takeaway"]["title"] = clean_title
-        if "badge" in post["takeaway"]:
-            post["takeaway"]["badge"] = remove_emojis(post["takeaway"]["badge"])
-        if "items" in post["takeaway"] and isinstance(post["takeaway"]["items"], list):
-            post["takeaway"]["items"] = [remove_emojis(item) for item in post["takeaway"]["items"]]
-
-    return post
+def humanize_post(obj):
+    """Recursively strip emojis from all string values in a post dictionary or list."""
+    if isinstance(obj, dict):
+        return {k: humanize_post(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [humanize_post(v) for v in obj]
+    if isinstance(obj, str):
+        return remove_emojis(obj)
+    return obj
 
 STOPWORDS = {
     'a', 'an', 'the', 'and', 'or', 'but', 'if', 'in', 'on', 'at', 'to', 'for', 'with', 'by', 'of',
@@ -92,41 +51,28 @@ def normalize_string(s: str) -> str:
     """Normalize string for casing, punctuation, and extra whitespace."""
     if not s or not isinstance(s, str):
         return ""
-    s = remove_emojis(s)
-    cleaned = re.sub(r"[^\w\s]", " ", s.lower())
+    cleaned = re.sub(r"[^\w\s]", " ", remove_emojis(s).lower())
     return re.sub(r"\s+", " ", cleaned).strip()
 
 def extract_tokens(text: str) -> list[str]:
     """Extract filtered tokens excluding stop words."""
-    norm = normalize_string(text)
-    return [w for w in norm.split() if w not in STOPWORDS and len(w) > 2]
+    return [w for w in normalize_string(text).split() if w not in STOPWORDS and len(w) > 2]
 
 def extract_bigrams(text: str) -> set[tuple[str, str]]:
     """Extract consecutive 2-word technical concept bigrams."""
     tokens = extract_tokens(text)
-    bigrams = set()
-    for i in range(len(tokens) - 1):
-        bigrams.add((tokens[i], tokens[i + 1]))
-    return bigrams
-
-def extract_keywords(text: str) -> set[str]:
-    """Extract unique architectural keyword set."""
-    return set(extract_tokens(text))
+    return set(zip(tokens, tokens[1:]))
 
 def calculate_jaccard_similarity(set_a: set[str], set_b: set[str]) -> float:
     """Compute token Jaccard similarity index."""
-    if not set_a or not set_b:
-        return 0.0
-    intersection = len(set_a & set_b)
-    union = len(set_a | set_b)
-    return intersection / union if union > 0 else 0.0
+    return len(set_a & set_b) / len(set_a | set_b) if (set_a or set_b) else 0.0
 
 def is_duplicate_post(candidate: dict, existing_posts: list[dict], jaccard_thresh: float = 0.45) -> tuple[bool, str]:
     """
     Multi-layer strict deduplication engine:
     1. Exact normalized title or topic match
-    2. Substring title containment (one is a substantial subset of the other)
-    3. Technical Bigram / Keyphrase collision (requires substantial concept overlap)
+    2. Substring title containment
+    3. Technical Bigram / Keyphrase collision
     4. Jaccard similarity on content keywords
     """
     if not candidate or not isinstance(candidate, dict):
@@ -136,7 +82,7 @@ def is_duplicate_post(candidate: dict, existing_posts: list[dict], jaccard_thres
     c_topic = normalize_string(candidate.get("topic", ""))
     c_combined = f"{c_title} {c_topic}".strip()
 
-    c_kw = extract_keywords(c_combined)
+    c_kw = set(extract_tokens(c_combined))
     c_bg = extract_bigrams(c_combined)
 
     for ex in existing_posts:
@@ -158,7 +104,7 @@ def is_duplicate_post(candidate: dict, existing_posts: list[dict], jaccard_thres
                 if ratio > 0.6:
                     return True, f"Title containment collision with {ex_id}: '{ex.get('title')}'"
 
-        ex_kw = extract_keywords(ex_combined)
+        ex_kw = set(extract_tokens(ex_combined))
         ex_bg = extract_bigrams(ex_combined)
 
         # 3. Technical Bigram / Keyphrase Collision
@@ -180,8 +126,8 @@ def is_duplicate_post(candidate: dict, existing_posts: list[dict], jaccard_thres
 RESERVE_TOPICS_POOL = [
     {
         "topic": "GraphRAG: Knowledge Graphs and Hierarchical Leiden Community Summarization",
-        "level": "LEVEL 16: STRUCTURAL KNOWLEDGE RETRIEVAL",
-        "levelClass": "level-3",
+        "level": "Advanced",
+        "levelClass": "level-advanced",
         "readTime": "9 min read",
         "audience": "Knowledge Systems Architects & Enterprise AI Leads",
         "title": "GraphRAG and Hierarchical Community Summarization: Conquering Global Dataset Synthesis",
@@ -214,8 +160,8 @@ RESERVE_TOPICS_POOL = [
     },
     {
         "topic": "Direct Preference Optimization (DPO) vs. Kahneman-Tversky Optimization (KTO): Reference-Free Alignment",
-        "level": "LEVEL 17: MODERN POST-TRAINING ALIGNMENT",
-        "levelClass": "level-3",
+        "level": "Advanced",
+        "levelClass": "level-advanced",
         "readTime": "8 min read",
         "audience": "Post-Training Research Engineers & Alignment Specialists",
         "title": "DPO vs. KTO: Aligning Frontier LLMs with Asymmetric Loss Functions",
@@ -235,7 +181,7 @@ RESERVE_TOPICS_POOL = [
         "diagram": "graph LR\n    Input[\"Prompt x + Model Output y\"] --> KTO{\"Signal Type?\"}\n    KTO -- \"Desirable (y in Y_D)\" --> Pos[\"Reward Utility: log(sigma(beta * delta_logP))\"]\n    KTO -- \"Undesirable (y in Y_U)\" --> Neg[\"Loss Aversion: lambda * log(sigma(beta * -delta_logP))\"]\n    Pos --> Loss[\"Total KTO Objective\"]\n    Neg --> Loss\n    Loss --> Backprop[\"Direct Model Weight Gradient Update\"]\n    style Pos fill:#065f46,stroke:#10b981,color:#fff\n    style Neg fill:#7f1d1d,stroke:#f87171,color:#fff",
         "diagramCaption": "Figure: Asymmetric Prospect Theory Value Function in KTO Alignment",
         "codeTitle": "kto_loss_objective.py",
-        "codeContent": "import torch\nimport torch.nn.functional as F\n\ndef kto_loss(policy_logps, ref_logps, labels, beta=0.1, lambda_loss=1.33):\n    # labels: 1 for desirable (thumbs-up), 0 for undesirable (thumbs-down)\n    delta = policy_logps - ref_logps\n    # Implicit reward calculation\n    r = beta * delta\n    \n    # Asymmetric prospect theory losses\n    pos_loss = 1.0 - torch.sigmoid(r)\n    neg_loss = 1.0 - torch.sigmoid(-r)\n    \n    loss = torch.where(labels == 1, pos_loss, lambda_loss * neg_loss)\n    return loss.mean()",
+        "codeContent": "import torch\nimport torch.nn.functional as F\n\ndef kto_loss(policy_logps, ref_logps, labels, beta=0.1, lambda_loss=1.33):\n    # labels: 1 for desirable (thumbs-up), 0 for undesirable (thumbs-down)\n    delta = policy_logps - ref_logps\n    r = beta * delta\n    pos_loss = 1.0 - torch.sigmoid(r)\n    neg_loss = 1.0 - torch.sigmoid(-r)\n    loss = torch.where(labels == 1, pos_loss, lambda_loss * neg_loss)\n    return loss.mean()",
         "takeaway": {
             "title": "Key Takeaways",
             "items": [
@@ -248,8 +194,8 @@ RESERVE_TOPICS_POOL = [
     },
     {
         "topic": "Medusa & EAGLE: Multi-Head Speculative Decoding Without a Separate Draft Model",
-        "level": "LEVEL 18: SPECULATIVE ACCELERATION",
-        "levelClass": "level-4",
+        "level": "Advanced",
+        "levelClass": "level-advanced",
         "readTime": "8 min read",
         "audience": "Systems Architects & Inference Performance Engineers",
         "title": "Medusa and EAGLE: Multi-Head Speculative Decoding Without Draft Models",
@@ -269,7 +215,7 @@ RESERVE_TOPICS_POOL = [
         "diagram": "graph TD\n    Backbone[\"Base Transformer Backbone\"] --> Hidden[\"Final Hidden State h_t\"]\n    Hidden --> Head0[\"Original LM Head (Token t+1)\"]\n    Hidden --> Head1[\"Medusa Head 1 (Token t+2)\"]\n    Hidden --> Head2[\"Medusa Head 2 (Token t+3)\"]\n    Head0 --> Tree[\"Construct Speculative Token Tree\"]\n    Head1 --> Tree\n    Head2 --> Tree\n    Tree --> TreeAttn[\"Tree Attention Mask Forward Pass\"]\n    TreeAttn --> Accept[\"Accept 2-3 Tokens in One Single Step\"]\n    style Backbone fill:#1e293b,stroke:#64748b,color:#fff\n    style Tree fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Accept fill:#065f46,stroke:#10b981,color:#fff",
         "diagramCaption": "Figure: Multi-Head Speculative Generation and Tree Attention Verification",
         "codeTitle": "medusa_tree_verification.py",
-        "codeContent": "import torch\nimport torch.nn as nn\n\nclass MedusaBlock(nn.Module):\n    def __init__(self, d_model: int, vocab_size: int, num_heads: int = 4):\n        super().__init__()\n        self.heads = nn.ModuleList([\n            nn.Sequential(\n                nn.Linear(d_model, d_model),\n                nn.SiLU(),\n                nn.Linear(d_model, vocab_size, bias=False)\n            ) for _ in range(num_heads)\n        ])\n\n    def forward(self, hidden_states: torch.Tensor):\n        # hidden_states: [batch, 1, d_model]\n        # Returns predictions for t+1, t+2, t+3 in a single pass\n        return [head(hidden_states) for head in self.heads]",
+        "codeContent": "import torch\nimport torch.nn as nn\n\nclass MedusaBlock(nn.Module):\n    def __init__(self, d_model: int, vocab_size: int, num_heads: int = 4):\n        super().__init__()\n        self.heads = nn.ModuleList([\n            nn.Sequential(\n                nn.Linear(d_model, d_model),\n                nn.SiLU(),\n                nn.Linear(d_model, vocab_size, bias=False)\n            ) for _ in range(num_heads)\n        ])\n\n    def forward(self, hidden_states: torch.Tensor):\n        return [head(hidden_states) for head in self.heads]",
         "takeaway": {
             "title": "Key Takeaways",
             "items": [
@@ -282,8 +228,8 @@ RESERVE_TOPICS_POOL = [
     },
     {
         "topic": "Rotary Position Embeddings (RoPE) & YaRN: Context Extension Beyond Pre-Training Limits",
-        "level": "LEVEL 19: MATHEMATICAL POSITIONAL ENCODING",
-        "levelClass": "level-4",
+        "level": "Advanced",
+        "levelClass": "level-advanced",
         "readTime": "9 min read",
         "audience": "Frontier AI Researchers & Foundation Model Architects",
         "title": "Rotary Embeddings and YaRN: Extending Context Windows from 4k to 128k Tokens",
@@ -303,7 +249,7 @@ RESERVE_TOPICS_POOL = [
         "diagram": "graph LR\n    Tokens[\"Query/Key Vectors\"] --> Split[\"Pairwise 2D Feature Channels\"]\n    Split --> Matrix[\"Complex Rotation Matrix R(m*theta)\"]\n    Matrix --> YaRN{\"Dimension Band?\"}\n    YaRN -- \"High Frequency (Local)\" --> Extrapolate[\"Extrapolate (No Interpolation)\"]\n    YaRN -- \"Low Frequency (Global)\" --> Interpolate[\"Interpolate by Scale Factor s\"]\n    Extrapolate --> Rotated[\"Rotated Attention Vectors (q_rot, k_rot)\"]\n    Interpolate --> Rotated\n    Rotated --> DotProduct[\"Inner Product: q_rot^T * k_rot = f(q, k, m-n)\"]\n    style Matrix fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style DotProduct fill:#065f46,stroke:#10b981,color:#fff",
         "diagramCaption": "Figure: 2D Complex Vector Rotation and Frequency-Band Interpolation in YaRN",
         "codeTitle": "rope_yarn_interpolation.py",
-        "codeContent": "import torch\n\ndef compute_yarn_frequencies(dim: int, scale: float = 16.0, base: float = 10000.0):\n    pos = torch.arange(0, dim, 2).float()\n    inv_freq = 1.0 / (base ** (pos / dim))\n    # YaRN frequency modulation\n    wavelength = 2 * torch.pi / inv_freq\n    # Dimensions with long wavelengths are interpolated; short are extrapolated\n    low_freq_wavelen = 4096 * 0.1\n    high_freq_wavelen = 4096 * 1.0\n    \n    yarn_freq = torch.where(\n        wavelength > high_freq_wavelen, \n        inv_freq / scale, \n        inv_freq\n    )\n    return yarn_freq",
+        "codeContent": "import torch\n\ndef compute_yarn_frequencies(dim: int, scale: float = 16.0, base: float = 10000.0):\n    pos = torch.arange(0, dim, 2).float()\n    inv_freq = 1.0 / (base ** (pos / dim))\n    wavelength = 2 * torch.pi / inv_freq\n    high_freq_wavelen = 4096 * 1.0\n    return torch.where(wavelength > high_freq_wavelen, inv_freq / scale, inv_freq)",
         "takeaway": {
             "title": "Key Takeaways",
             "items": [
@@ -316,8 +262,8 @@ RESERVE_TOPICS_POOL = [
     },
     {
         "topic": "Triton GPU Kernels for LLMs: Writing Fused Attention and RMSNorm Without CUDA C++",
-        "level": "LEVEL 20: ACCELERATOR PROGRAMMING & FUSION",
-        "levelClass": "level-4",
+        "level": "Advanced",
+        "levelClass": "level-advanced",
         "readTime": "9 min read",
         "audience": "Kernel Engineers & Performance Optimization Specialists",
         "title": "Triton GPU Programming: Fusing Memory-Bound Kernels for 3x Faster Inference",
@@ -337,7 +283,7 @@ RESERVE_TOPICS_POOL = [
         "diagram": "graph TD\n    In[\"Input Tensor in Global HBM (Slow, High Capacity)\"] --> Load[\"Triton Block Load to On-Chip SRAM (3.3 TB/s)\"]\n    Load --> Mean[\"Compute Variance in Parallel Registers\"]\n    Mean --> Rsqrt[\"Multiply by Fast rsqrt\"]\n    Rsqrt --> Scale[\"Multiply by Learnable Weight Gamma\"]\n    Scale --> Store[\"Single Fused Write Back to HBM\"]\n    style Load fill:#1e3a8a,stroke:#60a5fa,color:#fff\n    style Store fill:#065f46,stroke:#10b981,color:#fff",
         "diagramCaption": "Figure: Fused Kernel Execution Workflow in High-Speed On-Chip SRAM",
         "codeTitle": "fused_rmsnorm_triton.py",
-        "codeContent": "# Conceptual Triton RMSNorm Kernel\n# import triton\n# import triton.language as tl\n\n# @triton.jit\ndef rmsnorm_kernel_conceptual(x_ptr, w_ptr, out_ptr, stride, N, eps=1e-6):\n    # Each thread block processes one row of activations in SRAM\n    # cols = tl.arange(0, BLOCK_SIZE)\n    # x = tl.load(x_ptr + cols, mask=cols < N)\n    # variance = tl.sum(x * x, axis=0) / N\n    # rrms = 1.0 / tl.sqrt(variance + eps)\n    # w = tl.load(w_ptr + cols, mask=cols < N)\n    # tl.store(out_ptr + cols, x * rrms * w, mask=cols < N)\n    pass",
+        "codeContent": "# Conceptual Triton RMSNorm Kernel\n# Kernel keeps intermediate activation statistics in high-speed SRAM registers\ndef rmsnorm_fused_step(x, weight, eps=1e-6):\n    variance = x.pow(2).mean(-1, keepdim=True)\n    return x * torch.rsqrt(variance + eps) * weight",
         "takeaway": {
             "title": "Key Takeaways",
             "items": [
@@ -374,20 +320,15 @@ PROCEDURAL_ARCHITECTURAL_CONCEPTS = [
 ]
 
 def load_json(filepath):
-    if not os.path.exists(filepath):
-        return []
-    with open(filepath, "r", encoding="utf-8-sig") as f:
-        return json.load(f)
+    return json.load(open(filepath, "r", encoding="utf-8-sig")) if os.path.exists(filepath) else []
 
 def save_json(filepath, data):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def sync_posts_js(posts):
-    js_content = "// Auto-generated data sync for direct local file:// and offline execution\n"
-    js_content += f"window.POSTS_DATA = {json.dumps(posts, indent=2, ensure_ascii=False)};\n"
     with open(POSTS_JS, "w", encoding="utf-8") as f:
-        f.write(js_content)
+        f.write(f"// Auto-generated data sync for direct local file:// and offline execution\nwindow.POSTS_DATA = {json.dumps(posts, indent=2, ensure_ascii=False)};\n")
 
 def validate_post_schema(post):
     required = ["id", "publishedAt", "level", "readTime", "audience", "title", "lead", "stats", "mentalModel", "diagram", "diagramCaption", "codeTitle", "codeContent", "takeaway"]
@@ -396,68 +337,14 @@ def validate_post_schema(post):
             raise ValueError(f"Post is missing required field: '{field}'")
     return True
 
-def generate_custom_topic_post(custom_keyword):
-    """Generate or match a customized topic post based on user suggestion."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if api_key:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
-            prompt = f"""You are a Principal AI Systems Architect writing for an elite enterprise GenAI engineering community.
-Follow these Humanizer writing rules:
-- STRICT ZERO EMOJIS: Do not use any emojis anywhere in any field (no emojis in titles, headers, bullet points, mental models, code comments, or takeaways).
-- Voice: Write like an experienced human systems architect. Clear, concrete, and technically precise.
-- No staged run-ups (do not use "Let's dive in", "In the rapidly evolving landscape", "As modern GenAI pipelines mature").
-- No fake contrasts ("not just X, but Y"). State technical facts directly.
-- No forced triads or rhythm-by-rule. Use natural sentence variety.
-- Ground claims in real engineering numbers, hardware bottlenecks (SRAM, HBM, PCIe bandwidth), and concrete production tradeoffs.
-
-Create an advanced, high-impact post on the GenAI topic: '{custom_keyword}'.
-Include:
-1. Real-world engineering benchmarks and memory/latency stats.
-2. 60-second mental model with relatable CS analogy.
-3. Clean Mermaid diagram.
-4. Production code block (PyTorch, Triton, or Python).
-5. Actionable key takeaways.
-
-Output ONLY valid JSON matching:
-{{
-  "id": "post-X",
-  "publishedAt": "YYYY-MM-DD HH:MM UTC",
-  "level": "LEVEL X: ...",
-  "levelClass": "level-3",
-  "readTime": "8 min read",
-  "audience": "Senior GenAI Engineers & Architects",
-  "title": "...",
-  "lead": "...",
-  "stats": {{"type": "info", "title": "...", "items": ["..."]}},
-  "mentalModel": {{"title": "1. The 60-Second Mental Model: ...", "text": "..."}},
-  "diagram": "graph TD\\n...",
-  "diagramCaption": "Figure: ...",
-  "codeTitle": "...py",
-  "codeContent": "...",
-  "takeaway": {{"title": "Key Takeaways", "items": ["..."], "badge": "..."}}
-}}"""
-            res = client.messages.create(
-                model="claude-3-7-sonnet-20250219",
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            raw = res.content[0].text
-            if "```json" in raw:
-                raw = raw.split("```json")[1].split("```")[0]
-            elif "```" in raw:
-                raw = raw.split("```")[1].split("```")[0]
-            parsed = json.loads(raw.strip())
-            return humanize_post(parsed)
-        except Exception as err:
-            print(f"Claude API error: {err}. Falling back to template...")
-
+def generate_custom_topic_post(custom_keyword, difficulty="Advanced"):
+    """Generate a clean procedural post for on-demand keywords with zero dependencies."""
+    level_class = f"level-{difficulty.lower()}"
     fallback = {
         "topic": custom_keyword,
         "publishedAt": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        "level": f"DEEP-DIVE: {custom_keyword.upper()}",
-        "levelClass": "level-3",
+        "level": difficulty,
+        "levelClass": level_class,
         "readTime": "8 min read",
         "audience": "Senior GenAI Systems Community",
         "title": f"Architecting {custom_keyword}: Systems Design, Latency & Hardware Bounds",
@@ -477,7 +364,7 @@ Output ONLY valid JSON matching:
         "diagram": f"graph LR\n    Input[\"Input Tensor Stream\"] --> Engine[\"GenAI {custom_keyword} Kernel\"]\n    Engine --> Output[\"Optimized Activation Tensor\"]\n    style Engine fill:#10b981,stroke:#34d399,color:#fff",
         "diagramCaption": f"Figure: Computational Flow for {custom_keyword}",
         "codeTitle": "genai_pipeline_kernel.py",
-        "codeContent": f"# Implementation Pattern for {custom_keyword}\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n    # Fused operation step\n    return tensor_in",
+        "codeContent": f"# Implementation Pattern for {custom_keyword}\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n    return tensor_in",
         "takeaway": {
             "title": "Key Takeaways",
             "items": [
@@ -491,24 +378,21 @@ Output ONLY valid JSON matching:
 
 def replenish_queue_if_low(upcoming, posts, target_count=5):
     """Ensure queue never runs dry while guaranteeing 100% uniqueness against all past and queued posts."""
-    # Step 1: Sanitize existing queue to eliminate any duplicates
     sanitized_upcoming = []
     for item in upcoming:
         is_dup, reason = is_duplicate_post(item, posts + sanitized_upcoming)
-        if is_dup:
-            print(f"[QUEUE SANITIZER] Dropped duplicate queued post '{item.get('title')}': {reason}")
-        else:
+        if not is_dup:
             sanitized_upcoming.append(item)
     upcoming = sanitized_upcoming
 
     if len(upcoming) < target_count:
-        print(f"Upcoming queue has {len(upcoming)} topics (target: {target_count}). Replenishing to {target_count} unique topics...")
+        print(f"Upcoming queue has {len(upcoming)} topics (target: {target_count}). Replenishing...")
 
         # 1. Fill from pre-authored RESERVE_TOPICS_POOL
         for item in RESERVE_TOPICS_POOL:
             if len(upcoming) >= target_count:
                 break
-            is_dup, reason = is_duplicate_post(item, posts + upcoming)
+            is_dup, _ = is_duplicate_post(item, posts + upcoming)
             if not is_dup:
                 upcoming.append(humanize_post(item.copy()))
 
@@ -518,7 +402,25 @@ def replenish_queue_if_low(upcoming, posts, target_count=5):
             concept = PROCEDURAL_ARCHITECTURAL_CONCEPTS[concept_idx]
             concept_idx += 1
             generated = generate_custom_topic_post(concept)
-            is_dup, reason = is_duplicate_post(generated, posts + upcoming)
+            is_dup, _ = is_duplicate_post(generated, posts + upcoming)
+            if not is_dup:
+                upcoming.append(humanize_post(generated))
+
+        # 3. Dynamic emergency rotation safety net
+        emergency_pool = [
+            "Speculative Cache Pinning: High-Speed SRAM Pre-Loading for Attention Heads",
+            "Continuous KV Cache Defragmentation: Memory Compaction for Long-Context Serving",
+            "Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations",
+            "Dynamic Token Routing: Layer-Wise FLOP Allocation in Heterogeneous Clusters"
+        ]
+        attempts = 0
+        emergency_idx = 0
+        while len(upcoming) < target_count and attempts < 25:
+            attempts += 1
+            fallback_concept = emergency_pool[emergency_idx % len(emergency_pool)]
+            emergency_idx += 1
+            generated = generate_custom_topic_post(fallback_concept)
+            is_dup, _ = is_duplicate_post(generated, posts + upcoming)
             if not is_dup:
                 upcoming.append(humanize_post(generated))
 
@@ -540,7 +442,7 @@ def main():
     if args.list_queue:
         print(f"\nUpcoming Queued Topics ({len(upcoming)} remaining):")
         for i, t in enumerate(upcoming, 1):
-            print(f"  {i}. {t.get('title', t.get('topic'))}")
+            print(f"  {i}. [{t.get('level', 'Advanced')}] {t.get('title', t.get('topic'))}")
         return
 
     if args.custom_topic and args.custom_topic.strip():
@@ -552,6 +454,8 @@ def main():
             print("No topics available.")
             sys.exit(0)
         post_to_publish = upcoming.pop(0)
+        # Immediately replenish after popping, ensuring post_to_publish is treated as already published
+        upcoming = replenish_queue_if_low(upcoming, posts + [post_to_publish], target_count=5)
 
     post_to_publish = humanize_post(post_to_publish)
     post_to_publish["id"] = f"post-{len(posts) + 1}"
@@ -569,6 +473,7 @@ def main():
     posts.append(post_to_publish)
     save_json(POSTS_JSON, posts)
     sync_posts_js(posts)
+    upcoming = replenish_queue_if_low(upcoming, posts, target_count=5)
     save_json(UPCOMING_JSON, upcoming)
 
     print(f"Published '{post_to_publish['title']}' successfully!")

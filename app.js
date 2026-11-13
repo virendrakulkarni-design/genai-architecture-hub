@@ -414,12 +414,7 @@ function initSidebarSearch() {
 }
 
 function getStatIcon(type) {
-  switch (type) {
-    case 'danger': return 'CRITICAL IMPACT';
-    case 'success': return 'BENCHMARK METRIC';
-    case 'warning': return 'SYSTEM WARNING';
-    default: return 'ENGINEERING DATA';
-  }
+  return { danger: 'CRITICAL IMPACT', success: 'BENCHMARK METRIC', warning: 'SYSTEM WARNING' }[type] || 'ENGINEERING DATA';
 }
 
 /**
@@ -482,19 +477,11 @@ ${takeawayText}
 }
 
 function stripHtml(html) {
-  const tmp = document.createElement("DIV");
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || "";
+  return (html || '').replace(/<[^>]*>?/gm, '');
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return (text || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
 }
 
 /**
@@ -629,10 +616,4 @@ function onDwellThresholdReached(postId) {
   if (badge) {
     badge.title = 'Verified Impression: Active reading dwell time exceeded 3.5s (LinkedIn impression model)';
   }
-
-  try {
-    const totalKey = 'genai_hub_total_impressions';
-    let total = parseInt(localStorage.getItem(totalKey) || '0', 10) + 1;
-    localStorage.setItem(totalKey, total.toString());
-  } catch (e) {}
 }
