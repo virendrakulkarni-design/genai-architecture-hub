@@ -569,5 +569,41 @@
       "badge": "Hardware microscaling unlocks sub-byte tensor arithmetic without sacrificing representational accuracy."
     },
     "publishedAt": "2026-11-12 16:27 UTC"
+  },
+  {
+    "topic": "GraphRAG: Knowledge Graphs and Hierarchical Leiden Community Summarization",
+    "level": "LEVEL 16: STRUCTURAL KNOWLEDGE RETRIEVAL",
+    "levelClass": "level-3",
+    "readTime": "9 min read",
+    "audience": "Knowledge Systems Architects & Enterprise AI Leads",
+    "title": "GraphRAG and Hierarchical Community Summarization: Conquering Global Dataset Synthesis",
+    "lead": "Standard vector similarity retrieval fails when asked global thematic questions across thousands of documents. By extracting entity-relationship graphs and clustering them via the Leiden algorithm into hierarchical communities, GraphRAG enables comprehensive cross-corpus synthesis.",
+    "stats": {
+      "type": "success",
+      "title": "Global Query Synthesis Benchmarks:",
+      "items": [
+        "GraphRAG demonstrates an 82% improvement in answer comprehensiveness on global dataset summarization compared to baseline RAG.",
+        "Hierarchical community summaries reduce token consumption during multi-hop reasoning by over 68%."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Street View vs. Satellite Multi-Spectral Imaging",
+      "text": "Vector search is like zooming into street-level photography of individual storefronts; it finds specific addresses quickly but cannot answer what the city's overall zoning architecture looks like.<br><br><strong>GraphRAG provides hierarchical satellite orthomosaics:</strong> Raw text is parsed into entity nodes and relation edges, then clustered into county, city, and neighborhood summaries."
+    },
+    "diagram": "graph TD\n Docs[\"Raw Unstructured Corpus\"] --> Extract[\"Entity &amp; Relationship Graph Extraction\"]\n Extract --> Leiden[\"Leiden Hierarchical Community Detection\"]\n Leiden --> C0[\"Level 0: Global Themes\"]\n Leiden --> C1[\"Level 1: Sub-Domain Clusters\"]\n Leiden --> C2[\"Level 2: Fine-Grained Entity Communities\"]\n Q[\"Global Query\"] --> Map[\"Map: Summarize Each Community\"]\n C0 --> Map\n C1 --> Map\n Map --> Reduce[\"Reduce: Global Comprehensive Synthesis\"]\n Reduce --> Out[\"Final Thematic Answer\"]\n style Leiden fill:#1e3a8a,stroke:#60a5fa,color:#fff\n style Reduce fill:#065f46,stroke:#10b981,color:#fff",
+    "diagramCaption": "Figure: Graph Construction, Leiden Community Hierarchy, and Map-Reduce Synthesis",
+    "codeTitle": "graphrag_community_synthesis.py",
+    "codeContent": "# Minimal GraphRAG Community Summarization\ndef graphrag_global_search(communities, query, llm_fn):\n intermediate_summaries = []\n for community in communities:\n context = community.render_text()\n summary = llm_fn(f\"Answer '{query}' based on this community context:\\n{context}\")\n if summary.relevance_score > 0.5:\n intermediate_summaries.append(summary.text)\n # Hierarchical Reduce Step\n combined_context = \"\\n\\n\".join(intermediate_summaries)\n return llm_fn(f\"Synthesize a final report for '{query}':\\n{combined_context}\")",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Vector search excels at localized fact retrieval but breaks down on holistic corpus questions.",
+        "Leiden community clustering partitions large entity graphs without manual taxonomy curation.",
+        "Map-reduce hierarchical querying produces predictable token utilization across millions of records."
+      ],
+      "badge": "GraphRAG turns unstructured text corpora into observable, navigable knowledge graphs."
+    },
+    "id": "post-17",
+    "publishedAt": "2026-11-13 04:02 UTC"
   }
 ]
