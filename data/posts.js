@@ -606,5 +606,41 @@ window.POSTS_DATA = [
     },
     "id": "post-17",
     "publishedAt": "2026-11-13 04:02 UTC"
+  },
+  {
+    "topic": "Direct Preference Optimization (DPO) vs. Kahneman-Tversky Optimization (KTO): Reference-Free Alignment",
+    "level": "Medium",
+    "levelClass": "level-medium",
+    "readTime": "8 min read",
+    "audience": "Post-Training Research Engineers & Alignment Specialists",
+    "title": "DPO vs. KTO: Aligning Frontier LLMs with Asymmetric Loss Functions",
+    "lead": "Reinforcement Learning from Human Feedback (RLHF) required separate reward models and unstable PPO training. While Direct Preference Optimization (DPO) eliminated the reward model using pairwise comparisons, Kahneman-Tversky Optimization (KTO) directly aligns on unpaired binary signal via human loss aversion theory.",
+    "stats": {
+      "type": "info",
+      "title": "Alignment Data Efficiency & Training Stability:",
+      "items": [
+        "KTO matches DPO performance using completely unpaired binary feedback (thumbs up / thumbs down), cutting data curation overhead in half.",
+        "Eliminating the separate reward model actor-critic loop saves 3x GPU memory during post-training fine-tuning runs."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Side-by-Side Taste Tests vs. Customer Receipt Tips",
+      "text": "DPO requires bringing a patron two plates simultaneously and asking: 'Which plate tastes better?' This forces expensive pairwise annotations.<br><br><strong>KTO models human behavioral economics directly:</strong> Drawing from Daniel Kahneman's Prospect Theory, humans value avoiding a loss more than gaining an equivalent win. A thumbs-down receives a steeper loss penalty than a thumbs-up reward."
+    },
+    "diagram": "graph LR\n Input[\"Prompt x + Model Output y\"] --> KTO{\"Signal Type?\"}\n KTO -- \"Desirable (y in Y_D)\" --> Pos[\"Reward Utility: log(sigma(beta * delta_logP))\"]\n KTO -- \"Undesirable (y in Y_U)\" --> Neg[\"Loss Aversion: lambda * log(sigma(beta * -delta_logP))\"]\n Pos --> Loss[\"Total KTO Objective\"]\n Neg --> Loss\n Loss --> Backprop[\"Direct Model Weight Gradient Update\"]\n style Pos fill:#065f46,stroke:#10b981,color:#fff\n style Neg fill:#7f1d1d,stroke:#f87171,color:#fff",
+    "diagramCaption": "Figure: Asymmetric Prospect Theory Value Function in KTO Alignment",
+    "codeTitle": "kto_loss_objective.py",
+    "codeContent": "import torch\nimport torch.nn.functional as F\n\ndef kto_loss(policy_logps, ref_logps, labels, beta=0.1, lambda_loss=1.33):\n # labels: 1 for desirable (thumbs-up), 0 for undesirable (thumbs-down)\n delta = policy_logps - ref_logps\n # Implicit reward calculation\n r = beta * delta\n \n # Asymmetric prospect theory losses\n pos_loss = 1.0 - torch.sigmoid(r)\n neg_loss = 1.0 - torch.sigmoid(-r)\n \n loss = torch.where(labels == 1, pos_loss, lambda_loss * neg_loss)\n return loss.mean()",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Pairwise preference data collection is the primary cost bottleneck in enterprise model alignment.",
+        "Prospect Theory loss weighting mathematically penalizes toxic outputs more aggressively than it rewards helpfulness.",
+        "Direct alignment eliminates complex hyperparameter tuning of PPO KL-divergence penalties."
+      ],
+      "badge": "Binary alignment loss functions turn live user feedback into immediate post-training signals."
+    },
+    "id": "post-18",
+    "publishedAt": "2026-11-13 15:46 UTC"
   }
 ];
