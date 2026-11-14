@@ -1,39 +1,5 @@
 [
   {
-    "topic": "Triton GPU Kernels for LLMs: Writing Fused Attention and RMSNorm Without CUDA C++",
-    "level": "Advanced",
-    "levelClass": "level-advanced",
-    "readTime": "9 min read",
-    "audience": "Kernel Engineers & Performance Optimization Specialists",
-    "title": "Triton GPU Programming: Fusing Memory-Bound Kernels for 3x Faster Inference",
-    "lead": "Standard PyTorch operations write intermediate tensors to GPU High Bandwidth Memory (HBM) between every layer. By writing custom block-level kernels in OpenAI Triton, systems engineers fuse RMSNorm and Softmax directly inside on-chip SRAM, cutting memory bandwidth bottlenecks by over 60%.",
-    "stats": {
-      "type": "success",
-      "title": "Memory Bandwidth & Latency Benchmarks:",
-      "items": [
-        "Unfused LayerNorm + GeLU executes 3 discrete round-trips to GPU High Bandwidth Memory (HBM).",
-        "A fused Triton RMSNorm kernel keeps activations in on-chip SRAM registers, delivering 3.4x higher arithmetic throughput on NVIDIA H100 GPUs."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: In-Memory Cooking vs. Trips to the Walk-in Freezer",
-      "text": "Unfused GPU operations are like a chef who chops an onion, walks to the warehouse freezer to store it, immediately walks back to retrieve it, and sautees it.<br><br><strong>Kernel fusion keeps the ingredients on the cutting board (SRAM):</strong> Operations are chained sequentially within high-speed registers before writing the final cooked dish back to global memory."
-    },
-    "diagram": "graph TD\n In[\"Input Tensor in Global HBM (Slow, High Capacity)\"] --> Load[\"Triton Block Load to On-Chip SRAM (3.3 TB/s)\"]\n Load --> Mean[\"Compute Variance in Parallel Registers\"]\n Mean --> Rsqrt[\"Multiply by Fast rsqrt\"]\n Rsqrt --> Scale[\"Multiply by Learnable Weight Gamma\"]\n Scale --> Store[\"Single Fused Write Back to HBM\"]\n style Load fill:#1e3a8a,stroke:#60a5fa,color:#fff\n style Store fill:#065f46,stroke:#10b981,color:#fff",
-    "diagramCaption": "Figure: Fused Kernel Execution Workflow in High-Speed On-Chip SRAM",
-    "codeTitle": "fused_rmsnorm_triton.py",
-    "codeContent": "# Conceptual Triton RMSNorm Kernel\n# Kernel keeps intermediate activation statistics in high-speed SRAM registers\ndef rmsnorm_fused_step(x, weight, eps=1e-6):\n variance = x.pow(2).mean(-1, keepdim=True)\n return x * torch.rsqrt(variance + eps) * weight",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Modern LLM generation is memory-bandwidth bound, not compute FLOP bound.",
-        "Triton abstracts CUDA thread hierarchies into block-level array programming.",
-        "Fusing elementwise and normalization operations eliminates intermediate memory writes entirely."
-      ],
-      "badge": "On-chip kernel fusion unlocks hardware potential without writing thousands of lines of CUDA C++."
-    }
-  },
-  {
     "topic": "FlashDecoding: Parallelizing the Attention Reduction Across Key-Value Sequences",
     "publishedAt": "2026-11-13 04:02 UTC",
     "level": "Advanced",
@@ -167,6 +133,40 @@
         "Balance parameter scaling against hardware SRAM and HBM memory capacities."
       ],
       "badge": "Mastering Activation Checkpointing and Selective Gradient Recomputation in 100B+ Model Training separates experimental prototypes from resilient production AI systems."
+    }
+  },
+  {
+    "topic": "Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism",
+    "publishedAt": "2026-11-14 14:37 UTC",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
+    "readTime": "8 min read",
+    "audience": "Senior GenAI Systems Community",
+    "title": "Architecting Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism: Systems Design, Latency & Hardware Bounds",
+    "lead": "Deploying production infrastructure around Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
+    "stats": {
+      "type": "info",
+      "title": "Performance Benchmarks in Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism:",
+      "items": [
+        "Optimizing Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism mitigates memory bandwidth bottlenecks by over 38%.",
+        "Stabilizes generation throughput across multi-node distributed clusters."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism",
+      "text": "Just as database engines balance buffer pool memory against disk I/O, Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
+    },
+    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure: Computational Flow for Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism",
+    "codeTitle": "genai_pipeline_kernel.py",
+    "codeContent": "# Implementation Pattern for Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Profile Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism kernels using PyTorch Profiler or Nsight Systems before deploying.",
+        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
+      ],
+      "badge": "Mastering Tensor Parallelism vs Pipeline Parallelism vs Megatron-LM 3D Parallelism separates experimental prototypes from resilient production AI systems."
     }
   }
 ]
