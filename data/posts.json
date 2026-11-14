@@ -677,5 +677,41 @@
     },
     "id": "post-19",
     "publishedAt": "2026-11-13 21:43 UTC"
+  },
+  {
+    "topic": "Rotary Position Embeddings (RoPE) & YaRN: Context Extension Beyond Pre-Training Limits",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
+    "readTime": "9 min read",
+    "audience": "Frontier AI Researchers & Foundation Model Architects",
+    "title": "Rotary Embeddings and YaRN: Extending Context Windows from 4k to 128k Tokens",
+    "lead": "Absolute positional encodings fail to generalize past their pre-training length. Rotary Position Embeddings (RoPE) rotate query and key vectors in complex 2D planes, while Yet another RoPE extensioN (YaRN) interpolates high-frequency dimensions to extend context windows 16x with minimal fine-tuning.",
+    "stats": {
+      "type": "info",
+      "title": "Context Window Scaling & Perplexity Metrics:",
+      "items": [
+        "Naive RoPE context extrapolation causes perplexity to explode past 1.2x training length.",
+        "YaRN interpolation extends context from 4k to 128k tokens in fewer than 400 fine-tuning steps while maintaining zero perplexity degradation on short contexts."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Two Hands on an Analog Clock Face",
+      "text": "Absolute positional encoding is like stamping a fixed calendar date onto a page. Relative distance cannot be computed without consulting an index.<br><br><strong>RoPE is like an analog clock:</strong> The angle between the minute hand and the hour hand directly reflects their relative time delta, regardless of what hour the clock started ticking."
+    },
+    "diagram": "graph LR\n Tokens[\"Query/Key Vectors\"] --> Split[\"Pairwise 2D Feature Channels\"]\n Split --> Matrix[\"Complex Rotation Matrix R(m*theta)\"]\n Matrix --> YaRN{\"Dimension Band?\"}\n YaRN -- \"High Frequency (Local)\" --> Extrapolate[\"Extrapolate (No Interpolation)\"]\n YaRN -- \"Low Frequency (Global)\" --> Interpolate[\"Interpolate by Scale Factor s\"]\n Extrapolate --> Rotated[\"Rotated Attention Vectors (q_rot, k_rot)\"]\n Interpolate --> Rotated\n Rotated --> DotProduct[\"Inner Product: q_rot^T * k_rot = f(q, k, m-n)\"]\n style Matrix fill:#1e3a8a,stroke:#60a5fa,color:#fff\n style DotProduct fill:#065f46,stroke:#10b981,color:#fff",
+    "diagramCaption": "Figure: 2D Complex Vector Rotation and Frequency-Band Interpolation in YaRN",
+    "codeTitle": "rope_yarn_interpolation.py",
+    "codeContent": "import torch\n\ndef compute_yarn_frequencies(dim: int, scale: float = 16.0, base: float = 10000.0):\n pos = torch.arange(0, dim, 2).float()\n inv_freq = 1.0 / (base ** (pos / dim))\n # YaRN frequency modulation\n wavelength = 2 * torch.pi / inv_freq\n # Dimensions with long wavelengths are interpolated; short are extrapolated\n low_freq_wavelen = 4096 * 0.1\n high_freq_wavelen = 4096 * 1.0\n \n yarn_freq = torch.where(\n wavelength > high_freq_wavelen, \n inv_freq / scale, \n inv_freq\n )\n return yarn_freq",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "RoPE naturally expresses relative distance through the inner product of rotated vectors.",
+        "Linear position interpolation blurs high-frequency local tokens, damaging syntax parsing.",
+        "Targeted frequency-band scaling (YaRN) preserves sharp local attention while extending long-range document recall."
+      ],
+      "badge": "Harmonic frequency interpolation turns rigid context boundaries into elastic context windows."
+    },
+    "id": "post-20",
+    "publishedAt": "2026-11-14 04:00 UTC"
   }
 ]
