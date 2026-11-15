@@ -132,6 +132,76 @@
     </div>
   </footer>
 
+  <!-- Publish Draft Modal Dialog -->
+  <div id="publishModal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-labelledby="publishModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981"></span>
+          <h3 id="publishModalTitle" style="margin:0;font-size:16px;font-weight:600">Publish Dispatch to Live Timeline</h3>
+        </div>
+        <button class="modal-close-btn" onclick="closePublishModal()" title="Close">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <p id="publishModalPostTitle" style="color:var(--text-muted);font-size:13px;margin:0 0 16px 0;line-height:1.4">
+          Publish this technical dispatch into your live GenAI Architecture repository.
+        </p>
+
+        <!-- Method 1: Push directly to GitHub repo -->
+        <div class="publish-option-card">
+          <div style="font-weight:600;font-size:13.5px;margin-bottom:4px;display:flex;align-items:center;gap:6px;color:#10b981">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+            Publish Directly to GitHub (Live Site)
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+            Commits this dispatch to <code>data/posts.json</code> and <code>data/posts.js</code> on branch <code>main</code>. GitHub Pages deploys the live dispatch in seconds.
+          </div>
+          
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">GitHub Personal Access Token (with repo scope):</label>
+            <input type="password" id="githubTokenInput" class="sidebar-input" style="width:100%;box-sizing:border-box" placeholder="ghp_... or github_pat_..." />
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              Stored locally in your browser's localStorage. Never sent anywhere except api.github.com.
+            </div>
+          </div>
+
+          <button id="btnCommitToGithub" class="btn-primary" style="width:100%;background:#10b981;border:none;padding:9px 14px;font-weight:600;font-size:13px;cursor:pointer" onclick="executePublishToGitHub()">
+            🚀 Confirm &amp; Publish to GitHub
+          </button>
+          <div id="publishStatusMsg" style="font-size:12px;margin-top:10px;display:none;line-height:1.4"></div>
+        </div>
+
+        <!-- Method 2: Publish in local browser session -->
+        <div class="publish-option-card" style="margin-top:14px">
+          <div style="font-weight:600;font-size:13.5px;margin-bottom:4px;color:var(--text-primary)">
+            Publish in Browser Session Only
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">
+            Immediately converts this draft into an official published dispatch in your current browser session without requiring a GitHub token.
+          </div>
+          <button class="btn-secondary" style="width:100%;padding:8px 14px;font-size:12.5px;cursor:pointer" onclick="executePublishLocally()">
+            Promote to Published in Browser
+          </button>
+        </div>
+
+        <!-- Method 3: Local Python script -->
+        <div class="publish-option-card" style="margin-top:14px">
+          <div style="font-weight:600;font-size:13.5px;margin-bottom:4px;color:var(--text-primary)">
+            Publish via Local Terminal Command
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">
+            Run this in your local <code>genai-architecture-hub</code> project directory:
+          </div>
+          <div style="position:relative">
+            <pre style="background:var(--bg-primary);padding:8px 10px;font-size:11.5px;border-radius:6px;overflow-x:auto;margin:0;border:1px solid var(--border-color)"><code id="cliCommandCode">python scripts/publish_draft.py</code></pre>
+            <button class="btn-copy-code" style="position:absolute;top:5px;right:6px;padding:3px 8px;font-size:11px" onclick="copyCliCommand()">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Posts Data (offline and file:// friendly) -->
   <script src="data/posts.js"></script>
   <!-- Client Logic -->

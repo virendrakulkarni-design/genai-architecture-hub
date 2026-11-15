@@ -176,6 +176,236 @@ function copyPostJSON(postId) {
   }
 }
 
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3200);
+}
+
+let currentPublishPostId = null;
+
+function openPublishModal(postId) {
+  currentPublishPostId = postId || (allPosts[currentIndex]?.id);
+  const post = allPosts.find(p => p.id === currentPublishPostId) || allPosts[currentIndex];
+  if (!post) return;
+
+  const modal = document.getElementById('publishModal');
+  const titleEl = document.getElementById('publishModalPostTitle');
+  const cliCode = document.getElementById('cliCommandCode');
+  const tokenInput = document.getElementById('githubTokenInput');
+  const statusMsg = document.getElementById('publishStatusMsg');
+
+  if (titleEl) {
+    titleEl.innerHTML = `Dispatch: <strong style="color:var(--text-primary)">${escapeHtml(post.title)}</strong>`;
+  }
+  if (cliCode) {
+    const cleanPost = { ...post };
+    delete cleanPost.draft;
+    cliCode.textContent = `python scripts/publish_draft.py --json '${JSON.stringify(cleanPost).replace(/'/g, "'\\''")}'`;
+  }
+  if (tokenInput) {
+    tokenInput.value = localStorage.getItem('genai_hub_github_token') || '';
+  }
+  if (statusMsg) {
+    statusMsg.style.display = 'none';
+    statusMsg.textContent = '';
+  }
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+function closePublishModal() {
+  const modal = document.getElementById('publishModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function executePublishToGitHub() {
+  const post = allPosts.find(p => p.id === currentPublishPostId) || allPosts[currentIndex];
+  if (!post) return;
+
+  const tokenInput = document.getElementById('githubTokenInput');
+  const token = (tokenInput?.value || '').trim();
+  const statusMsg = document.getElementById('publishStatusMsg');
+  const btn = document.getElementById('btnCommitToGithub');
+
+  if (!token) {
+    if (statusMsg) {
+      statusMsg.style.display = 'block';
+      statusMsg.style.color = '#f87171';
+      statusMsg.textContent = 'Please enter a GitHub Personal Access Token with repo scope.';
+    }
+    tokenInput?.focus();
+    return;
+  }
+
+  try {
+    localStorage.setItem('genai_hub_github_token', token);
+  } catch {}
+
+  if (statusMsg) {
+    statusMsg.style.display = 'block';
+    statusMsg.style.color = '#38bdf8';
+    statusMsg.innerHTML = '<span class="draft-pulse-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8;margin-right:6px"></span>Connecting to GitHub API (virendrakulkarni-design/genai-architecture-hub)...';
+  }
+  if (btn) btn.disabled = true;
+
+  try {
+    const repo = 'virendrakulkarni-design/genai-architecture-hub';
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    };
+
+    // 1. Fetch current data/posts.json
+    statusMsg.innerHTML = '<span class="draft-pulse-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8;margin-right:6px"></span>Reading current posts.json...';
+    const resJson = await fetch(`https://api.github.com/repos/${repo}/contents/data/posts.json`, { headers });
+    if (!resJson.ok) {
+      const err = await resJson.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to read posts.json (HTTP ${resJson.status}). Check token permissions.`);
+    }
+    const fileJsonData = await resJson.json();
+    const currentJsonStr = decodeURIComponent(escape(atob(fileJsonData.content.replace(/\s/g, ''))));
+    const postsList = JSON.parse(currentJsonStr);
+
+    // 2. Prepare published post
+    const nextId = `post-${postsList.length + 1}`;
+    const publishedPost = { ...post };
+    delete publishedPost.draft;
+    publishedPost.id = nextId;
+    publishedPost.level = publishedPost.level || 'Advanced';
+    publishedPost.levelClass = `level-${publishedPost.level.toLowerCase()}`;
+    publishedPost.publishedAt = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+
+    postsList.push(publishedPost);
+
+    // 3. Commit data/posts.json
+    statusMsg.innerHTML = `<span class="draft-pulse-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:6px"></span>Committing as ${nextId} to data/posts.json...`;
+    const updatedJsonStr = JSON.stringify(postsList, null, 2);
+    const updatedJsonBase64 = btoa(unescape(encodeURIComponent(updatedJsonStr)));
+
+    const putJsonRes = await fetch(`https://api.github.com/repos/${repo}/contents/data/posts.json`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        message: `Publish dispatch: ${publishedPost.title} [skip ci]`,
+        content: updatedJsonBase64,
+        sha: fileJsonData.sha,
+        branch: 'main'
+      })
+    });
+    if (!putJsonRes.ok) {
+      const err = await putJsonRes.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to commit data/posts.json (HTTP ${putJsonRes.status})`);
+    }
+
+    // 4. Sync data/posts.js
+    statusMsg.innerHTML = '<span class="draft-pulse-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:6px"></span>Syncing data/posts.js...';
+    try {
+      const resJs = await fetch(`https://api.github.com/repos/${repo}/contents/data/posts.js`, { headers });
+      if (resJs.ok) {
+        const fileJsData = await resJs.json();
+        const updatedJsStr = `// Auto-generated data sync for direct local file:// and offline execution\nwindow.POSTS_DATA = ${updatedJsonStr};\n`;
+        const updatedJsBase64 = btoa(unescape(encodeURIComponent(updatedJsStr)));
+        await fetch(`https://api.github.com/repos/${repo}/contents/data/posts.js`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `Sync data/posts.js: ${publishedPost.title} [skip ci]`,
+            content: updatedJsBase64,
+            sha: fileJsData.sha,
+            branch: 'main'
+          })
+        });
+      }
+    } catch {}
+
+    // Success! Update local state
+    statusMsg.style.color = '#10b981';
+    statusMsg.innerHTML = `<strong>Published successfully as ${nextId}!</strong> GitHub Pages is deploying your new dispatch now.`;
+
+    // Remove draft from local drafts
+    try {
+      let drafts = JSON.parse(localStorage.getItem('genai_hub_drafts') || '[]');
+      drafts = drafts.filter(d => d.id !== post.id && d.title !== post.title);
+      localStorage.setItem('genai_hub_drafts', JSON.stringify(drafts));
+    } catch {}
+
+    // Clean hash
+    if (window.location.hash.startsWith('#draft=')) {
+      history.replaceState(null, '', window.location.pathname + `#${nextId}`);
+    }
+
+    // Replace in allPosts
+    allPosts = allPosts.filter(p => p.id !== post.id);
+    allPosts.push(publishedPost);
+    currentIndex = allPosts.length - 1;
+
+    updateDraftFilterVisibility();
+    renderSidebarList(allPosts);
+    renderMobilePills();
+    showPost(currentIndex, true);
+
+    showToast(`Published ${nextId} to GitHub Pages!`);
+    setTimeout(() => {
+      closePublishModal();
+    }, 2000);
+
+  } catch (err) {
+    statusMsg.style.color = '#f87171';
+    statusMsg.innerHTML = `<strong>Error:</strong> ${escapeHtml(err.message)}`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function executePublishLocally() {
+  const post = allPosts.find(p => p.id === currentPublishPostId) || allPosts[currentIndex];
+  if (!post) return;
+
+  const nextId = `post-${allPosts.filter(p => !p.draft).length + 1}`;
+  delete post.draft;
+  post.id = nextId;
+  post.level = post.level || 'Advanced';
+  post.levelClass = `level-${post.level.toLowerCase()}`;
+  post.publishedAt = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+
+  // Remove from drafts
+  try {
+    let drafts = JSON.parse(localStorage.getItem('genai_hub_drafts') || '[]');
+    drafts = drafts.filter(d => d.id !== post.id && d.title !== post.title);
+    localStorage.setItem('genai_hub_drafts', JSON.stringify(drafts));
+  } catch {}
+
+  // Clean URL hash
+  if (window.location.hash.startsWith('#draft=')) {
+    history.replaceState(null, '', window.location.pathname + `#${nextId}`);
+  }
+
+  updateDraftFilterVisibility();
+  renderSidebarList(allPosts);
+  renderMobilePills();
+  showPost(currentIndex, true);
+  closePublishModal();
+  showToast(`Promoted to active dispatch #${nextId} in browser!`);
+}
+
+function copyCliCommand() {
+  const code = document.getElementById('cliCommandCode');
+  if (!code) return;
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    showToast('Terminal publish command copied!');
+  }).catch(() => {
+    prompt('Copy CLI Command:', code.textContent);
+  });
+}
+
 /**
  * Display Single Post at index
  */
@@ -206,6 +436,9 @@ async function showPost(index, shouldScroll = true) {
           <div class="draft-banner-actions">
             <button class="btn-copy-slack" onclick="copyPostMarkdown('${post.id}')" style="margin:0;font-size:12px;padding:6px 12px">Copy Markdown</button>
             <button class="btn-copy-slack" onclick="copyPostJSON('${post.id}')" style="margin:0;font-size:12px;padding:6px 12px;background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.4);color:#fbbf24">Copy Post JSON</button>
+            <button class="btn-primary btn-publish-draft" onclick="openPublishModal('${post.id}')" style="margin:0;font-size:12px;padding:6px 14px;background:#10b981;border:none;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(16,185,129,0.35);cursor:pointer">
+              🚀 Publish Post
+            </button>
           </div>
         </div>
       ` : ''}
