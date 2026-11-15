@@ -536,6 +536,67 @@ body.light-theme .top-nav {
   background: rgba(248, 113, 113, 0.12);
 }
 
+.difficulty-filter-btn.diff-draft.active {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.16);
+}
+
+.sidebar-item-level.level-draft,
+.meta-pill.meta-draft {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.draft-review-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.draft-banner-content {
+  flex: 1 1 300px;
+}
+
+.draft-banner-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fbbf24;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.draft-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+}
+
+.draft-banner-desc {
+  margin: 4px 0 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.draft-banner-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .sidebar-list {
   overflow-y: auto;
   padding-right: 4px;

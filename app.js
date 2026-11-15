@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 3. Load Posts Data
   await loadPosts();
 
+  // 3b. Ingest any Draft from URL query/hash or local storage
+  handleDrafts();
+
   if (!allPosts || allPosts.length === 0) {
     document.getElementById('single-post-container').innerHTML = `<div class="empty-state">No dispatches available.</div>`;
     return;
@@ -40,12 +43,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 4. Determine initial post from URL hash (e.g. #post-3)
   const hash = window.location.hash.replace('#', '');
-  const hashIndex = allPosts.findIndex(p => p.id === hash);
-  if (hashIndex !== -1) {
-    currentIndex = hashIndex;
+  if (!hash.startsWith('draft=')) {
+    const hashIndex = allPosts.findIndex(p => p.id === hash);
+    if (hashIndex !== -1) {
+      currentIndex = hashIndex;
+    }
   }
 
   // 5. Initialize Navigation & Controls
+  updateDraftFilterVisibility();
   renderSidebarList(allPosts);
   renderMobilePills();
   initDropdown();
@@ -81,6 +87,96 @@ async function loadPosts() {
 }
 
 /**
+ * Handle incoming drafts via URL query/hash or local storage
+ */
+function handleDrafts() {
+  let draftJsonStr = null;
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('draft')) {
+    draftJsonStr = urlParams.get('draft');
+  } else if (window.location.hash.startsWith('#draft=')) {
+    draftJsonStr = window.location.hash.slice(7);
+  }
+
+  if (draftJsonStr) {
+    try {
+      let draftObj = null;
+      try {
+        draftObj = JSON.parse(decodeURIComponent(draftJsonStr));
+      } catch {
+        draftObj = JSON.parse(atob(draftJsonStr));
+      }
+
+      if (draftObj && (draftObj.title || draftObj.id)) {
+        draftObj.draft = true;
+        draftObj.level = draftObj.level || 'Advanced';
+        draftObj.levelClass = 'level-draft';
+        draftObj.id = draftObj.id || 'draft-review';
+        draftObj.publishedAt = draftObj.publishedAt || 'Draft (Under Review)';
+
+        saveDraftToLocal(draftObj);
+
+        allPosts = allPosts.filter(p => p.id !== draftObj.id);
+        allPosts.unshift(draftObj);
+        currentIndex = 0;
+        return;
+      }
+    } catch (e) {
+      console.warn('Failed to parse draft from URL:', e);
+    }
+  }
+
+  loadDraftsFromLocal();
+}
+
+function saveDraftToLocal(draft) {
+  try {
+    let drafts = JSON.parse(localStorage.getItem('genai_hub_drafts') || '[]');
+    drafts = drafts.filter(d => d.id !== draft.id && d.title !== draft.title);
+    drafts.unshift(draft);
+    localStorage.setItem('genai_hub_drafts', JSON.stringify(drafts.slice(0, 10)));
+  } catch {}
+}
+
+function loadDraftsFromLocal() {
+  try {
+    const drafts = JSON.parse(localStorage.getItem('genai_hub_drafts') || '[]');
+    if (Array.isArray(drafts) && drafts.length > 0) {
+      drafts.forEach(d => {
+        d.draft = true;
+        d.levelClass = 'level-draft';
+        if (!allPosts.some(p => p.id === d.id)) {
+          allPosts.unshift(d);
+        }
+      });
+    }
+  } catch {}
+}
+
+function updateDraftFilterVisibility() {
+  const draftBtn = document.querySelector('.difficulty-filter-btn.diff-draft');
+  if (draftBtn) {
+    const hasDrafts = allPosts.some(p => p.draft);
+    draftBtn.style.display = hasDrafts ? 'inline-block' : 'none';
+  }
+}
+
+function copyPostJSON(postId) {
+  const post = allPosts.find(p => p.id === postId) || allPosts[currentIndex];
+  if (!post) return;
+  const jsonStr = JSON.stringify(post, null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(jsonStr).then(() => {
+      showToast('Draft JSON copied to clipboard!');
+    }).catch(() => {
+      prompt('Copy Post JSON:', jsonStr);
+    });
+  } else {
+    prompt('Copy Post JSON:', jsonStr);
+  }
+}
+
+/**
  * Display Single Post at index
  */
 async function showPost(index, shouldScroll = true) {
@@ -91,18 +187,35 @@ async function showPost(index, shouldScroll = true) {
   const container = document.getElementById('single-post-container');
   if (!container) return;
 
-  const isLatest = (currentIndex === allPosts.length - 1);
+  const isLatest = (!post.draft && currentIndex === allPosts.length - 1);
 
   // Render Post HTML
   container.innerHTML = `
     <article id="${post.id}" class="post-card">
+      ${post.draft ? `
+        <div class="draft-review-banner">
+          <div class="draft-banner-content">
+            <div class="draft-banner-tag">
+              <span class="draft-pulse-dot"></span>
+              <strong>DRAFT MODE &bull; READY FOR REVIEW</strong>
+            </div>
+            <p class="draft-banner-desc">
+              Generated from AI Daily research in draft mode for your technical review before publishing.
+            </p>
+          </div>
+          <div class="draft-banner-actions">
+            <button class="btn-copy-slack" onclick="copyPostMarkdown('${post.id}')" style="margin:0;font-size:12px;padding:6px 12px">Copy Markdown</button>
+            <button class="btn-copy-slack" onclick="copyPostJSON('${post.id}')" style="margin:0;font-size:12px;padding:6px 12px;background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.4);color:#fbbf24">Copy Post JSON</button>
+          </div>
+        </div>
+      ` : ''}
       <div class="post-header">
         <div class="post-meta">
-          <span class="meta-pill meta-level ${post.levelClass || ('level-' + (post.level || 'medium').toLowerCase())}">${escapeHtml(post.level)}</span>
-          ${isLatest ? '<span class="meta-pill meta-latest">LATEST DISPATCH</span>' : ''}
-          ${post.publishedAt ? `<span class="meta-pill meta-date">Published: ${escapeHtml(post.publishedAt)}</span>` : ''}
-          <span class="meta-pill meta-time">${escapeHtml(post.readTime)}</span>
-          <span class="meta-pill meta-role">Audience: ${escapeHtml(post.audience)}</span>
+          <span class="meta-pill meta-level ${post.levelClass || (post.draft ? 'level-draft' : ('level-' + (post.level || 'medium').toLowerCase()))}">${escapeHtml(post.level || (post.draft ? 'Draft' : 'Medium'))}</span>
+          ${post.draft ? '<span class="meta-pill meta-draft" style="background:rgba(245,158,11,0.18);color:#fbbf24;border-color:rgba(245,158,11,0.4)">DRAFT REVIEW</span>' : (isLatest ? '<span class="meta-pill meta-latest">LATEST DISPATCH</span>' : '')}
+          ${post.publishedAt ? `<span class="meta-pill meta-date">${escapeHtml(post.publishedAt)}</span>` : ''}
+          <span class="meta-pill meta-time">${escapeHtml(post.readTime || '8 min read')}</span>
+          <span class="meta-pill meta-role">Audience: ${escapeHtml(post.audience || 'Enterprise GenAI Systems Engineers')}</span>
         </div>
         <h1 class="post-title">${escapeHtml(post.title)}</h1>
         <p class="post-lead">${escapeHtml(post.lead)}</p>
@@ -278,14 +391,14 @@ function renderSidebarList(posts) {
 
   listContainer.innerHTML = posts.map((post) => {
     const originalIndex = allPosts.findIndex(p => p.id === post.id);
-    const shortLevel = post.level || 'Medium';
-    const levelClass = post.levelClass || `level-${shortLevel.toLowerCase()}`;
-    const isLatest = (originalIndex === allPosts.length - 1);
+    const shortLevel = post.draft ? 'Draft' : (post.level || 'Medium');
+    const levelClass = post.draft ? 'level-draft' : (post.levelClass || `level-${shortLevel.toLowerCase()}`);
+    const isLatest = (!post.draft && originalIndex === allPosts.length - 1);
     return `
       <div class="sidebar-item ${originalIndex === currentIndex ? 'active' : ''}" data-index="${originalIndex}" onclick="showPost(${originalIndex})">
         <div class="sidebar-item-top">
           <span class="sidebar-item-level ${escapeHtml(levelClass)}">${escapeHtml(shortLevel)}</span>
-          ${isLatest ? '<span class="sidebar-latest-tag">LATEST</span>' : ''}
+          ${post.draft ? '<span class="sidebar-latest-tag" style="background:#f59e0b;color:#000">DRAFT</span>' : (isLatest ? '<span class="sidebar-latest-tag">LATEST</span>' : '')}
         </div>
         <div class="sidebar-item-title">${escapeHtml(post.title)}</div>
         <div class="sidebar-item-meta">
@@ -407,9 +520,14 @@ function filterSidebar() {
   const filtered = allPosts.filter(p => {
     // Difficulty filter
     if (activeDifficultyFilter !== 'all') {
-      const pLevel = (p.level || '').toLowerCase();
-      if (pLevel !== activeDifficultyFilter) {
-        return false;
+      if (activeDifficultyFilter === 'draft') {
+        if (!p.draft) return false;
+      } else {
+        if (p.draft) return false;
+        const pLevel = (p.level || '').toLowerCase();
+        if (pLevel !== activeDifficultyFilter) {
+          return false;
+        }
       }
     }
 
