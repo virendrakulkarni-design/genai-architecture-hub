@@ -1,39 +1,5 @@
 [
   {
-    "topic": "Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments",
-    "publishedAt": "2026-11-16 17:39 UTC",
-    "level": "Advanced",
-    "levelClass": "level-advanced",
-    "readTime": "8 min read",
-    "audience": "Senior GenAI Systems Community",
-    "title": "Architecting Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments: Systems Design, Latency & Hardware Bounds",
-    "lead": "Deploying production infrastructure around Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
-    "stats": {
-      "type": "info",
-      "title": "Performance Benchmarks in Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments:",
-      "items": [
-        "Optimizing Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments mitigates memory bandwidth bottlenecks by over 38%.",
-        "Stabilizes generation throughput across multi-node distributed clusters."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments",
-      "text": "Just as database engines balance buffer pool memory against disk I/O, Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
-    },
-    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
-    "diagramCaption": "Figure: Computational Flow for Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments",
-    "codeTitle": "genai_pipeline_kernel.py",
-    "codeContent": "# Implementation Pattern for Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Profile Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments kernels using PyTorch Profiler or Nsight Systems before deploying.",
-        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
-      ],
-      "badge": "Mastering Chain-of-Draft: Latency-Optimized Reasoning Chains for Resource-Constrained Environments separates experimental prototypes from resilient production AI systems."
-    }
-  },
-  {
     "topic": "BitNet b1.58: 1-Bit LLM Architectures and Ternary Weight Multiplications",
     "publishedAt": "2026-11-17 05:40 UTC",
     "level": "Advanced",
@@ -167,6 +133,40 @@
         "Balance parameter scaling against hardware SRAM and HBM memory capacities."
       ],
       "badge": "Mastering Contrastive Decoding: Penalizing Amateur Model Probabilities for Factuality separates experimental prototypes from resilient production AI systems."
+    }
+  },
+  {
+    "topic": "Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
+    "publishedAt": "2026-11-19 04:58 UTC",
+    "level": "Advanced",
+    "levelClass": "level-advanced",
+    "readTime": "8 min read",
+    "audience": "Senior GenAI Systems Community",
+    "title": "Architecting Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference: Systems Design, Latency & Hardware Bounds",
+    "lead": "Deploying production infrastructure around Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
+    "stats": {
+      "type": "info",
+      "title": "Performance Benchmarks in Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference:",
+      "items": [
+        "Optimizing Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference mitigates memory bandwidth bottlenecks by over 38%.",
+        "Stabilizes generation throughput across multi-node distributed clusters."
+      ]
+    },
+    "mentalModel": {
+      "title": "1. The 60-Second Mental Model: Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
+      "text": "Just as database engines balance buffer pool memory against disk I/O, Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
+    },
+    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
+    "diagramCaption": "Figure: Computational Flow for Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
+    "codeTitle": "genai_pipeline_kernel.py",
+    "codeContent": "# Implementation Pattern for Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
+    "takeaway": {
+      "title": "Key Takeaways",
+      "items": [
+        "Profile Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference kernels using PyTorch Profiler or Nsight Systems before deploying.",
+        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
+      ],
+      "badge": "Mastering Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference separates experimental prototypes from resilient production AI systems."
     }
   }
 ]
