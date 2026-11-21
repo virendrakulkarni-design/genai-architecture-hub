@@ -1,39 +1,5 @@
 [
   {
-    "topic": "Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations",
-    "publishedAt": "2026-11-19 16:55 UTC",
-    "level": "Advanced",
-    "levelClass": "level-advanced",
-    "readTime": "8 min read",
-    "audience": "Senior GenAI Systems Community",
-    "title": "Architecting Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations: Systems Design, Latency & Hardware Bounds",
-    "lead": "Deploying production infrastructure around Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
-    "stats": {
-      "type": "info",
-      "title": "Performance Benchmarks in Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations:",
-      "items": [
-        "Optimizing Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations mitigates memory bandwidth bottlenecks by over 38%.",
-        "Stabilizes generation throughput across multi-node distributed clusters."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations",
-      "text": "Just as database engines balance buffer pool memory against disk I/O, Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
-    },
-    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
-    "diagramCaption": "Figure: Computational Flow for Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations",
-    "codeTitle": "genai_pipeline_kernel.py",
-    "codeContent": "# Implementation Pattern for Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Profile Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations kernels using PyTorch Profiler or Nsight Systems before deploying.",
-        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
-      ],
-      "badge": "Mastering Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations separates experimental prototypes from resilient production AI systems."
-    }
-  },
-  {
     "topic": "Dynamic Token Routing: Layer-Wise FLOP Allocation in Heterogeneous Clusters",
     "publishedAt": "2026-11-20 04:49 UTC",
     "level": "Advanced",
