@@ -1,39 +1,5 @@
 [
   {
-    "topic": "Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
-    "publishedAt": "2026-11-19 04:58 UTC",
-    "level": "Advanced",
-    "levelClass": "level-advanced",
-    "readTime": "8 min read",
-    "audience": "Senior GenAI Systems Community",
-    "title": "Architecting Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference: Systems Design, Latency & Hardware Bounds",
-    "lead": "Deploying production infrastructure around Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference demands evaluating concrete tradeoffs between tensor core arithmetic, memory bandwidth, and latency budgets.",
-    "stats": {
-      "type": "info",
-      "title": "Performance Benchmarks in Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference:",
-      "items": [
-        "Optimizing Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference mitigates memory bandwidth bottlenecks by over 38%.",
-        "Stabilizes generation throughput across multi-node distributed clusters."
-      ]
-    },
-    "mentalModel": {
-      "title": "1. The 60-Second Mental Model: Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
-      "text": "Just as database engines balance buffer pool memory against disk I/O, Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference balances compute intensity, memory bandwidth, and numerical stability across inference pipelines."
-    },
-    "diagram": "graph LR\n Input[\"Input Tensor Stream\"] --> Engine[\"GenAI Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference Kernel\"]\n Engine --> Output[\"Optimized Activation Tensor\"]\n style Engine fill:#10b981,stroke:#34d399,color:#fff",
-    "diagramCaption": "Figure: Computational Flow for Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference",
-    "codeTitle": "genai_pipeline_kernel.py",
-    "codeContent": "# Implementation Pattern for Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference\n# Enforces high tensor core throughput and numerical stability.\ndef execute_pipeline_step(tensor_in):\n return tensor_in",
-    "takeaway": {
-      "title": "Key Takeaways",
-      "items": [
-        "Profile Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference kernels using PyTorch Profiler or Nsight Systems before deploying.",
-        "Balance parameter scaling against hardware SRAM and HBM memory capacities."
-      ],
-      "badge": "Mastering Weight Disentanglement in Multi-Task Adapters: Mitigating Catastrophic Interference separates experimental prototypes from resilient production AI systems."
-    }
-  },
-  {
     "topic": "Adaptive Quantization Outlier Thresholding: Preserving Outlier Activations",
     "publishedAt": "2026-11-19 16:55 UTC",
     "level": "Advanced",
